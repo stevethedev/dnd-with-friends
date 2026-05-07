@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron'
 import { IPC_CHANNELS } from '../shared/ipcChannels'
-import { getWindowRefs } from './windowManager'
+import { getWindowRefs, setDndPanelOpen, isDndOpen } from './windowManager'
 import { getBeyond20Status } from './beyond20Manager'
 
 /** Allow only http/https URLs to prevent navigation to file:// or javascript: */
@@ -55,5 +55,14 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(IPC_CHANNELS.WINDOW_CLOSE, () => {
     const { win } = getWindowRefs()
     win.close()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.DND_TOGGLE_PANEL, () => {
+    setDndPanelOpen(!isDndOpen())
+    return isDndOpen()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.DND_GET_PANEL_STATE, () => {
+    return isDndOpen()
   })
 }

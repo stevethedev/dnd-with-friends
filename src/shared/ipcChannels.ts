@@ -20,7 +20,12 @@ export const IPC_CHANNELS = {
   // Window controls
   WINDOW_MINIMIZE: 'window:minimize',
   WINDOW_MAXIMIZE: 'window:maximize',
-  WINDOW_CLOSE: 'window:close'
+  WINDOW_CLOSE: 'window:close',
+
+  // D&D Beyond overlay panel
+  DND_TOGGLE_PANEL: 'dnd:toggle-panel',       // renderer → main
+  DND_GET_PANEL_STATE: 'dnd:get-panel-state', // renderer → main
+  DND_PANEL_STATE: 'dnd:panel-state'          // main → renderer push
 } as const
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS]

@@ -8,6 +8,14 @@ let mainWindow: BrowserWindow | null = null
 let dndView: WebContentsView | null = null
 let roll20View: WebContentsView | null = null
 
+let dndPanelOpen = false
+let animationTimer: ReturnType<typeof setInterval> | null = null
+
+const ANIM_DURATION_MS = 220
+const ANIM_FPS = 60
+// D&D Beyond overlay takes 45% of window width, min 520px
+const dndPanelWidth = (winWidth: number): number => Math.max(520, Math.floor(winWidth * 0.45))
+
 export function getWindowRefs(): {
   win: BrowserWindow
   dndView: WebContentsView
@@ -17,6 +25,52 @@ export function getWindowRefs(): {
     throw new Error('Window refs accessed before initialization')
   }
   return { win: mainWindow, dndView, roll20View }
+}
+
+export function isDndOpen(): boolean {
+  return dndPanelOpen
+}
+
+/** Slide the D&D Beyond overlay open or closed with an ease-in-out animation. */
+export function setDndPanelOpen(open: boolean): void {
+  if (!mainWindow || !dndView) return
+  if (dndPanelOpen === open) return
+
+  dndPanelOpen = open
+
+  // Tell the toolbar about the state change
+  mainWindow.webContents.send(IPC_CHANNELS.DND_PANEL_STATE, open)
+
+  const [winWidth, winHeight] = mainWindow.getContentSize()
+  const panelW = dndPanelWidth(winWidth)
+  const panelH = Math.max(0, winHeight - TOOLBAR_HEIGHT)
+
+  const startX = open ? -panelW : 0
+  const endX = open ? 0 : -panelW
+  const startTime = Date.now()
+
+  if (animationTimer !== null) clearInterval(animationTimer)
+
+  animationTimer = setInterval(() => {
+    if (!dndView) {
+      clearInterval(animationTimer!)
+      animationTimer = null
+      return
+    }
+
+    const elapsed = Date.now() - startTime
+    const t = Math.min(elapsed / ANIM_DURATION_MS, 1)
+    // Ease-in-out cubic
+    const eased = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
+    const x = Math.round(startX + (endX - startX) * eased)
+
+    dndView.setBounds({ x, y: TOOLBAR_HEIGHT, width: panelW, height: panelH })
+
+    if (t >= 1) {
+      clearInterval(animationTimer!)
+      animationTimer = null
+    }
+  }, Math.round(1000 / ANIM_FPS))
 }
 
 export function createWindowWithPanels(): BrowserWindow {
@@ -36,16 +90,7 @@ export function createWindowWithPanels(): BrowserWindow {
     }
   })
 
-  // D&D Beyond panel (left)
-  const dndb = new WebContentsView({
-    webPreferences: {
-      session: session.defaultSession,
-      nodeIntegration: false,
-      contextIsolation: true
-    }
-  })
-
-  // Roll20 panel (right)
+  // Roll20 fills the full window below the toolbar
   const r20 = new WebContentsView({
     webPreferences: {
       session: session.defaultSession,
@@ -54,18 +99,27 @@ export function createWindowWithPanels(): BrowserWindow {
     }
   })
 
-  win.contentView.addChildView(dndb)
-  win.contentView.addChildView(r20)
+  // D&D Beyond slides in as an overlay on top of Roll20.
+  // Added AFTER Roll20 so it renders above it (later = higher z-order).
+  const dndb = new WebContentsView({
+    webPreferences: {
+      session: session.defaultSession,
+      nodeIntegration: false,
+      contextIsolation: true
+    }
+  })
+
+  win.contentView.addChildView(r20)   // bottom layer
+  win.contentView.addChildView(dndb)  // top layer (overlay)
 
   mainWindow = win
   dndView = dndb
   roll20View = r20
 
   layoutPanels()
-
   win.on('resize', layoutPanels)
 
-  // Open external links from the panels in the system browser (PDFs, OAuth, etc.)
+  // Open external links from the panels in the system browser
   dndb.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url)
     return { action: 'deny' }
@@ -75,7 +129,7 @@ export function createWindowWithPanels(): BrowserWindow {
     return { action: 'deny' }
   })
 
-  // Push URL changes to the renderer toolbar
+  // Push URL changes to the toolbar
   dndb.webContents.on('did-navigate', (_e, url) => {
     store.set('lastDndUrl', url)
     win.webContents.send(IPC_CHANNELS.DND_URL_CHANGED, url)
@@ -84,7 +138,6 @@ export function createWindowWithPanels(): BrowserWindow {
     store.set('lastDndUrl', url)
     win.webContents.send(IPC_CHANNELS.DND_URL_CHANGED, url)
   })
-
   r20.webContents.on('did-navigate', (_e, url) => {
     store.set('lastRoll20Url', url)
     win.webContents.send(IPC_CHANNELS.ROLL20_URL_CHANGED, url)
@@ -95,12 +148,10 @@ export function createWindowWithPanels(): BrowserWindow {
   })
 
   // Load saved URLs
-  const lastDndUrl = store.get('lastDndUrl')
-  const lastRoll20Url = store.get('lastRoll20Url')
-  dndb.webContents.loadURL(lastDndUrl)
-  r20.webContents.loadURL(lastRoll20Url)
+  dndb.webContents.loadURL(store.get('lastDndUrl'))
+  r20.webContents.loadURL(store.get('lastRoll20Url'))
 
-  // Log renderer-side console messages and crashes so we can diagnose issues
+  // Renderer diagnostics
   win.webContents.on('console-message', (_e, level, message, line, sourceId) => {
     const tag = ['verbose', 'info', 'warn', 'error'][level] ?? 'log'
     console.log(`[Renderer:${tag}] ${message} (${sourceId}:${line})`)
@@ -115,12 +166,14 @@ export function createWindowWithPanels(): BrowserWindow {
     console.log('[Renderer] Loaded successfully')
   })
 
-  // Always load the renderer from the built file.
-  // (electron.exe is a Windows process; it cannot reach the WSL Vite dev server)
   win.loadFile(join(__dirname, '../renderer/index.html'))
 
   win.on('closed', () => {
     console.log('[Window] Closed')
+    if (animationTimer !== null) {
+      clearInterval(animationTimer)
+      animationTimer = null
+    }
     mainWindow = null
     dndView = null
     roll20View = null
@@ -133,20 +186,13 @@ function layoutPanels(): void {
   if (!mainWindow || !dndView || !roll20View) return
 
   const [width, height] = mainWindow.getContentSize()
-  const panelHeight = Math.max(0, height - TOOLBAR_HEIGHT)
-  const halfWidth = Math.floor(width / 2)
+  const panelH = Math.max(0, height - TOOLBAR_HEIGHT)
+  const panelW = dndPanelWidth(width)
 
-  dndView.setBounds({
-    x: 0,
-    y: TOOLBAR_HEIGHT,
-    width: halfWidth,
-    height: panelHeight
-  })
+  // Roll20 always fills the full panel area
+  roll20View.setBounds({ x: 0, y: TOOLBAR_HEIGHT, width, height: panelH })
 
-  roll20View.setBounds({
-    x: halfWidth,
-    y: TOOLBAR_HEIGHT,
-    width: width - halfWidth,
-    height: panelHeight
-  })
+  // D&D Beyond: off-screen left when closed, at x=0 when open
+  const dndX = dndPanelOpen ? 0 : -panelW
+  dndView.setBounds({ x: dndX, y: TOOLBAR_HEIGHT, width: panelW, height: panelH })
 }

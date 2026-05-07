@@ -4,6 +4,9 @@ interface ElectronAPI {
   minimizeWindow: () => Promise<void>
   maximizeWindow: () => Promise<void>
   closeWindow: () => Promise<void>
+  toggleDndPanel: () => Promise<boolean>
+  getDndPanelState: () => Promise<boolean>
+  onDndPanelState: (cb: (open: boolean) => void) => () => void
   navigateDnd: (url: string) => Promise<void>
   navigateRoll20: (url: string) => Promise<void>
   getDndUrl: () => Promise<string>
