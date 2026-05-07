@@ -1,8 +1,8 @@
 import React, { useState, useEffect, KeyboardEvent } from 'react'
-import { useWebViewNavigation } from '../hooks/useWebViewNavigation'
+import { useRoll20Navigation } from '../hooks/useWebViewNavigation'
 
 export function Roll20Panel(): React.JSX.Element {
-  const { currentUrl, navigate } = useWebViewNavigation('roll20')
+  const { currentUrl, navigate } = useRoll20Navigation()
   const [inputValue, setInputValue] = useState(currentUrl)
 
   useEffect(() => {

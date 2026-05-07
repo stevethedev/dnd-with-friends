@@ -1,10 +1,9 @@
 import { app, BrowserWindow, session } from 'electron'
 import {
   ensureLatestBeyond20,
-  getBeyond20Status,
   onBeyond20StatusChange
 } from './beyond20Manager'
-import { createWindowWithPanels, getWindowRefs } from './windowManager'
+import { createWindowWithPanels, getMainWindow } from './windowManager'
 import { registerIpcHandlers } from './ipcHandlers'
 import { IPC_CHANNELS } from '../shared/ipcChannels'
 
@@ -16,7 +15,7 @@ if (!app.requestSingleInstanceLock()) {
 
 app.on('second-instance', () => {
   try {
-    const { win } = getWindowRefs()
+    const win = getMainWindow()
     if (win.isMinimized()) win.restore()
     win.focus()
   } catch {
@@ -56,7 +55,7 @@ app.whenReady().then(async () => {
   // Step 5: Forward Beyond20 status updates to the renderer
   onBeyond20StatusChange((status) => {
     try {
-      const { win } = getWindowRefs()
+      const win = getMainWindow()
       win.webContents.send(IPC_CHANNELS.BEYOND20_UPDATE, status)
     } catch {
       // Window may not exist yet during startup

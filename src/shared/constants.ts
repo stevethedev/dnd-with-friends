@@ -7,3 +7,6 @@ export const BEYOND20_GITHUB_API = 'https://api.github.com/repos/kakaroto/Beyond
 /** Default URLs loaded on first launch */
 export const DEFAULT_DND_URL = 'https://www.dndbeyond.com'
 export const DEFAULT_ROLL20_URL = 'https://roll20.net'
+
+/** Width of the resize handle WebContentsView in pixels */
+export const RESIZE_HANDLE_WIDTH = 8

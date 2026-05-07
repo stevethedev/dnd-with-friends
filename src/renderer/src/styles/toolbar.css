@@ -9,16 +9,47 @@ html,
 body {
   margin: 0;
   padding: 0;
-  background: #1a1a2e;
+  background: transparent;
   overflow: hidden;
   user-select: none;
   -webkit-user-select: none;
+  /* Clicks pass through to WebContentsViews except where explicitly enabled */
+  pointer-events: none;
 }
 
 #root {
   width: 100vw;
-  height: 48px; /* Only occupy the toolbar height — WebContentsViews cover the rest */
-  background: #1a1a2e;
+  /* Full height so the resize handle overlay can span below the toolbar.
+     Everything below the 48px toolbar bar has pointer-events:none. */
+  height: 100vh;
+  background: transparent;
+  position: relative;
+}
+
+/* ─── Resize handle overlay ──────────────────────────────────────────────── */
+
+.resize-handle {
+  position: fixed;
+  top: 48px; /* below toolbar */
+  /* left is set inline from React (panel.width px) */
+  width: 8px;
+  height: calc(100vh - 48px);
+  cursor: ew-resize;
+  background: #2d2d4e;
+  border-left: 1px solid #4a4a7a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-app-region: no-drag;
+  pointer-events: all;
+  z-index: 10;
+  transition: background 0.1s, border-color 0.1s;
+}
+
+.resize-handle:hover,
+.resize-handle--dragging {
+  background: #3d3d6e;
+  border-left-color: #7c3aed;
 }
 
 /* ─── Toolbar ─────────────────────────────────────────────────────────────── */
@@ -36,27 +67,27 @@ body {
   font-family: system-ui, -apple-system, sans-serif;
   font-size: 13px;
   -webkit-app-region: drag;
+  pointer-events: all;
 }
 
-/* ─── D&D Beyond toggle control ──────────────────────────────────────────── */
+/* ─── Panel toggle button group ──────────────────────────────────────────── */
 
-.toolbar__dnd-control {
+.toolbar__panel-btn-group {
   display: flex;
   align-items: center;
-  gap: 6px;
   flex-shrink: 0;
   -webkit-app-region: no-drag;
 }
 
-.toolbar__dnd-toggle {
+.toolbar__panel-toggle {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   height: 30px;
-  padding: 0 12px;
+  padding: 0 10px;
   background: #2d2d4e;
   border: 1px solid #4a4a7a;
-  border-radius: 6px;
+  border-radius: 6px 0 0 6px;
   color: #c4b5fd;
   font-size: 12px;
   font-weight: 600;
@@ -64,37 +95,95 @@ body {
   white-space: nowrap;
   transition: background 0.15s, border-color 0.15s;
   -webkit-app-region: no-drag;
+  max-width: 160px;
 }
 
-.toolbar__dnd-toggle:hover {
+/* When there's no remove button, the toggle gets full border-radius */
+.toolbar__panel-btn-group:not(:has(.toolbar__panel-remove)) .toolbar__panel-toggle {
+  border-radius: 6px;
+}
+
+.toolbar__panel-toggle:hover {
   background: #3d3d6e;
   border-color: #7c3aed;
 }
 
-.toolbar__dnd-toggle--open {
+.toolbar__panel-toggle--open {
   background: #4c1d95;
   border-color: #7c3aed;
   color: #ede9fe;
 }
 
-.toolbar__dnd-toggle--open:hover {
+.toolbar__panel-toggle--open:hover {
   background: #5b21b6;
 }
 
-.toolbar__dnd-toggle-icon {
+.toolbar__panel-toggle-icon {
   font-size: 13px;
   line-height: 1;
+  flex-shrink: 0;
 }
 
-.toolbar__dnd-toggle-label {
+.toolbar__panel-toggle-label {
   font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.toolbar__dnd-url {
+.toolbar__panel-remove {
+  height: 30px;
+  width: 22px;
+  padding: 0;
+  background: #2d2d4e;
+  border: 1px solid #4a4a7a;
+  border-left: none;
+  border-radius: 0 6px 6px 0;
+  color: #888;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+  transition: background 0.15s, color 0.15s;
+}
+
+.toolbar__panel-remove:hover {
+  background: #5b1d1d;
+  border-color: #ef4444;
+  color: #fca5a5;
+}
+
+/* ─── Add panel button ────────────────────────────────────────────────────── */
+
+.toolbar__add-panel {
+  flex-shrink: 0;
+  height: 28px;
+  width: 28px;
+  background: #2d2d4e;
+  border: 1px solid #4a4a7a;
+  border-radius: 6px;
+  color: #c4b5fd;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.toolbar__add-panel:hover {
+  background: #3d3d6e;
+  border-color: #7c3aed;
+  color: #ede9fe;
+}
+
+/* ─── Active-panel URL bar ────────────────────────────────────────────────── */
+
+.toolbar__active-url {
   display: flex;
   align-items: center;
-  gap: 5px;
-  min-width: 0;
+  gap: 4px;
+  flex-shrink: 0;
+  -webkit-app-region: no-drag;
 }
 
 /* ─── Roll20 panel section ────────────────────────────────────────────────── */
@@ -120,7 +209,7 @@ body {
 }
 
 .toolbar__url-input {
-  width: 260px;
+  width: 220px;
   height: 28px;
   padding: 0 8px;
   background: #0d0d1a;

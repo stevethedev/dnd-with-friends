@@ -1,31 +1,37 @@
 export const IPC_CHANNELS = {
-  // Panel navigation (renderer → main)
-  DND_NAVIGATE: 'dnd:navigate',
+  // Roll20 navigation
   ROLL20_NAVIGATE: 'roll20:navigate',
-
-  // Panel URL query (renderer → main)
-  DND_GET_URL: 'dnd:get-url',
   ROLL20_GET_URL: 'roll20:get-url',
-
-  // Panel URL change push (main → renderer)
-  DND_URL_CHANGED: 'dnd:url-changed',
   ROLL20_URL_CHANGED: 'roll20:url-changed',
 
-  // Beyond20 status (renderer → main)
-  BEYOND20_STATUS: 'beyond20:status',
+  // Generic overlay panels (renderer ↔ main)
+  PANEL_CREATE: 'panel:create',           // (url) → panelId
+  PANEL_REMOVE: 'panel:remove',           // (panelId)
+  PANEL_TOGGLE: 'panel:toggle',           // (panelId) → isOpen
+  PANEL_NAVIGATE: 'panel:navigate',       // (panelId, url)
+  PANEL_GET_URL: 'panel:get-url',         // (panelId) → url
+  PANEL_LIST: 'panel:list',              // () → PanelInfo[]
 
-  // Beyond20 status push (main → renderer)
+  // Main → renderer push events
+  PANEL_LIST_UPDATED: 'panel:list-updated',   // PanelInfo[]
+  PANEL_URL_CHANGED: 'panel:url-changed',     // (panelId, url)
+  PANEL_TITLE_UPDATED: 'panel:title-updated', // (panelId, title)
+
+  // Resize handle (fire-and-forget, renderer → main)
+  PANEL_RESIZE: 'panel:resize',           // (panelId, newWidth) — ipcMain.on, not handle
+  PANEL_RESIZE_END: 'panel:resize-end',   // (panelId, finalWidth) — persist to store
+
+  // Resize handle view init (main → resize-handle renderer)
+  RESIZE_HANDLE_INIT: 'resize-handle:init', // (panelId, currentWidth)
+
+  // Beyond20 status
+  BEYOND20_STATUS: 'beyond20:status',
   BEYOND20_UPDATE: 'beyond20:update-event',
 
   // Window controls
   WINDOW_MINIMIZE: 'window:minimize',
   WINDOW_MAXIMIZE: 'window:maximize',
   WINDOW_CLOSE: 'window:close',
-
-  // D&D Beyond overlay panel
-  DND_TOGGLE_PANEL: 'dnd:toggle-panel',       // renderer → main
-  DND_GET_PANEL_STATE: 'dnd:get-panel-state', // renderer → main
-  DND_PANEL_STATE: 'dnd:panel-state'          // main → renderer push
 } as const
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS]

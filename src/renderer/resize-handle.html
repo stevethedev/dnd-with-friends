@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'unsafe-inline'" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    #handle {
+      width: 100%;
+      height: 100%;
+      cursor: ew-resize;
+      background: #2d2d4e;
+      border-left: 1px solid #4a4a7a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.1s;
+    }
+    #handle:hover, #handle.dragging {
+      background: #3d3d6e;
+      border-left-color: #7c3aed;
+    }
+    #dots {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      pointer-events: none;
+    }
+    .dot {
+      width: 2px;
+      height: 2px;
+      border-radius: 50%;
+      background: #6b6b9a;
+    }
+  </style>
+</head>
+<body>
+  <div id="handle">
+    <div id="dots">
+      <div class="dot"></div>
+      <div class="dot"></div>
+      <div class="dot"></div>
+      <div class="dot"></div>
+      <div class="dot"></div>
+    </div>
+  </div>
+  <script>
+    let panelId = null;
+    let panelWidth = 0;
+    let dragStartScreenX = 0;
+    let dragStartWidth = 0;
+    const handle = document.getElementById('handle');
+
+    // Receive panel identity and current width from main process
+    window.resizeAPI.onInit(function(pid, width) {
+      panelId = pid;
+      panelWidth = width;
+    });
+
+    handle.addEventListener('pointerdown', function(e) {
+      if (!panelId) return;
+      dragStartScreenX = e.screenX;
+      dragStartWidth = panelWidth;
+      handle.classList.add('dragging');
+      handle.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    });
+
+    handle.addEventListener('pointermove', function(e) {
+      if (!handle.hasPointerCapture(e.pointerId)) return;
+      const delta = e.screenX - dragStartScreenX;
+      const newWidth = Math.max(320, dragStartWidth + delta);
+      window.resizeAPI.resize(panelId, newWidth);
+    });
+
+    handle.addEventListener('pointerup', function(e) {
+      if (!handle.hasPointerCapture(e.pointerId)) return;
+      const delta = e.screenX - dragStartScreenX;
+      const newWidth = Math.max(320, dragStartWidth + delta);
+      panelWidth = newWidth;
+      window.resizeAPI.resizeEnd(panelId, newWidth);
+      handle.classList.remove('dragging');
+      handle.releasePointerCapture(e.pointerId);
+    });
+
+    handle.addEventListener('pointercancel', function(e) {
+      handle.classList.remove('dragging');
+      if (handle.hasPointerCapture(e.pointerId)) {
+        handle.releasePointerCapture(e.pointerId);
+      }
+    });
+  </script>
+</body>
+</html>

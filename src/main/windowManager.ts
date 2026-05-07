@@ -3,75 +3,156 @@ import { join } from 'path'
 import { store } from './store'
 import { IPC_CHANNELS } from '../shared/ipcChannels'
 import { TOOLBAR_HEIGHT } from '../shared/constants'
+import type { PanelConfig, PanelInfo } from '../shared/types'
 
+// ─── Internal state ──────────────────────────────────────────────────────────
+
+interface PanelState {
+  id: string
+  view: WebContentsView
+  title: string
+  url: string
+  width: number
+}
+
+const panelMap = new Map<string, PanelState>()
+let activePanelId: string | null = null
 let mainWindow: BrowserWindow | null = null
-let dndView: WebContentsView | null = null
 let roll20View: WebContentsView | null = null
-
-let dndPanelOpen = false
 let animationTimer: ReturnType<typeof setInterval> | null = null
 
 const ANIM_DURATION_MS = 220
 const ANIM_FPS = 60
-// D&D Beyond overlay takes 45% of window width, min 520px
-const dndPanelWidth = (winWidth: number): number => Math.max(520, Math.floor(winWidth * 0.45))
+const MIN_PANEL_WIDTH = 320
+const MAX_PANEL_WIDTH_FRACTION = 0.80
 
-export function getWindowRefs(): {
-  win: BrowserWindow
-  dndView: WebContentsView
-  roll20View: WebContentsView
-} {
-  if (!mainWindow || !dndView || !roll20View) {
-    throw new Error('Window refs accessed before initialization')
+// ─── Public accessors ─────────────────────────────────────────────────────────
+
+export function getMainWindow(): BrowserWindow {
+  if (!mainWindow) throw new Error('Main window not yet created')
+  return mainWindow
+}
+
+export function getRoll20View(): WebContentsView {
+  if (!roll20View) throw new Error('Roll20 view not yet created')
+  return roll20View
+}
+
+export function getPanelInfoList(): PanelInfo[] {
+  return Array.from(panelMap.values()).map((p) => ({
+    id: p.id,
+    title: p.title,
+    url: p.url,
+    isOpen: p.id === activePanelId,
+    width: p.width
+  }))
+}
+
+// ─── Panel management ─────────────────────────────────────────────────────────
+
+export function addPanel(config: PanelConfig): PanelInfo {
+  if (panelMap.has(config.id)) {
+    throw new Error(`Panel ${config.id} already exists`)
   }
-  return { win: mainWindow, dndView, roll20View }
+
+  const view = createPanelView(config.id, config.url)
+  const state: PanelState = {
+    id: config.id,
+    view,
+    title: config.url,
+    url: config.url,
+    width: config.width
+  }
+  panelMap.set(config.id, state)
+
+  if (mainWindow) {
+    mainWindow.contentView.addChildView(view)
+  }
+
+  hidePanel(state)
+  persistPanels()
+  return panelStateToInfo(state)
 }
 
-export function isDndOpen(): boolean {
-  return dndPanelOpen
+export function removePanel(id: string): void {
+  if (id === activePanelId) {
+    closeActivePanel()
+  }
+  const state = panelMap.get(id)
+  if (!state) return
+  panelMap.delete(id)
+  if (mainWindow) {
+    mainWindow.contentView.removeChildView(state.view)
+  }
+  state.view.webContents.close()
+  persistPanels()
 }
 
-/** Slide the D&D Beyond overlay open or closed with an ease-in-out animation. */
-export function setDndPanelOpen(open: boolean): void {
-  if (!mainWindow || !dndView) return
-  if (dndPanelOpen === open) return
+export function togglePanel(id: string): PanelInfo[] {
+  const panel = panelMap.get(id)
+  if (!panel) return getPanelInfoList()
 
-  dndPanelOpen = open
+  if (activePanelId === id) {
+    closeActivePanel()
+  } else {
+    if (activePanelId !== null) {
+      const current = panelMap.get(activePanelId)
+      if (current) hidePanel(current)
+    }
+    activePanelId = id
+    animatePanel(id, true)
+  }
+  return getPanelInfoList()
+}
 
-  // Tell the toolbar about the state change
-  mainWindow.webContents.send(IPC_CHANNELS.DND_PANEL_STATE, open)
+export function navigatePanel(id: string, url: string): void {
+  const state = panelMap.get(id)
+  if (!state) return
+  state.url = url
+  state.view.webContents.loadURL(url)
+}
+
+export function getPanelUrl(id: string): string {
+  const state = panelMap.get(id)
+  return state ? state.view.webContents.getURL() : ''
+}
+
+/** Called during drag — immediately reposition panel view for smooth feedback. */
+export function updatePanelWidth(id: string, rawWidth: number): void {
+  if (!mainWindow) return
+  const state = panelMap.get(id)
+  if (!state || activePanelId !== id) return
 
   const [winWidth, winHeight] = mainWindow.getContentSize()
-  const panelW = dndPanelWidth(winWidth)
+  const maxW = Math.floor(winWidth * MAX_PANEL_WIDTH_FRACTION)
+  const w = Math.max(MIN_PANEL_WIDTH, Math.min(rawWidth, maxW))
+  state.width = w
+
   const panelH = Math.max(0, winHeight - TOOLBAR_HEIGHT)
-
-  const startX = open ? -panelW : 0
-  const endX = open ? 0 : -panelW
-  const startTime = Date.now()
-
-  if (animationTimer !== null) clearInterval(animationTimer)
-
-  animationTimer = setInterval(() => {
-    if (!dndView) {
-      clearInterval(animationTimer!)
-      animationTimer = null
-      return
-    }
-
-    const elapsed = Date.now() - startTime
-    const t = Math.min(elapsed / ANIM_DURATION_MS, 1)
-    // Ease-in-out cubic
-    const eased = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
-    const x = Math.round(startX + (endX - startX) * eased)
-
-    dndView.setBounds({ x, y: TOOLBAR_HEIGHT, width: panelW, height: panelH })
-
-    if (t >= 1) {
-      clearInterval(animationTimer!)
-      animationTimer = null
-    }
-  }, Math.round(1000 / ANIM_FPS))
+  state.view.setBounds({ x: 0, y: TOOLBAR_HEIGHT, width: w, height: panelH })
 }
+
+/** Called at drag end — persist and notify renderer. */
+export function finalizePanelWidth(id: string, rawWidth: number): void {
+  if (!mainWindow) return
+  const state = panelMap.get(id)
+  if (!state) return
+
+  const [winWidth, winHeight] = mainWindow.getContentSize()
+  const maxW = Math.floor(winWidth * MAX_PANEL_WIDTH_FRACTION)
+  const w = Math.max(MIN_PANEL_WIDTH, Math.min(rawWidth, maxW))
+  state.width = w
+
+  if (activePanelId === id) {
+    const panelH = Math.max(0, winHeight - TOOLBAR_HEIGHT)
+    state.view.setBounds({ x: 0, y: TOOLBAR_HEIGHT, width: w, height: panelH })
+  }
+
+  persistPanels()
+  sendPanelListUpdate()
+}
+
+// ─── Window creation ──────────────────────────────────────────────────────────
 
 export function createWindowWithPanels(): BrowserWindow {
   const win = new BrowserWindow({
@@ -90,7 +171,7 @@ export function createWindowWithPanels(): BrowserWindow {
     }
   })
 
-  // Roll20 fills the full window below the toolbar
+  // Roll20 fills the full window below the toolbar (bottom-most layer)
   const r20 = new WebContentsView({
     webPreferences: {
       session: session.defaultSession,
@@ -99,44 +180,15 @@ export function createWindowWithPanels(): BrowserWindow {
     }
   })
 
-  // D&D Beyond slides in as an overlay on top of Roll20.
-  // Added AFTER Roll20 so it renders above it (later = higher z-order).
-  const dndb = new WebContentsView({
-    webPreferences: {
-      session: session.defaultSession,
-      nodeIntegration: false,
-      contextIsolation: true
-    }
-  })
-
-  win.contentView.addChildView(r20)   // bottom layer
-  win.contentView.addChildView(dndb)  // top layer (overlay)
+  win.contentView.addChildView(r20)
 
   mainWindow = win
-  dndView = dndb
   roll20View = r20
 
-  layoutPanels()
-  win.on('resize', layoutPanels)
-
-  // Open external links from the panels in the system browser
-  dndb.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url)
-    return { action: 'deny' }
-  })
+  // Set up Roll20
   r20.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url)
     return { action: 'deny' }
-  })
-
-  // Push URL changes to the toolbar
-  dndb.webContents.on('did-navigate', (_e, url) => {
-    store.set('lastDndUrl', url)
-    win.webContents.send(IPC_CHANNELS.DND_URL_CHANGED, url)
-  })
-  dndb.webContents.on('did-navigate-in-page', (_e, url) => {
-    store.set('lastDndUrl', url)
-    win.webContents.send(IPC_CHANNELS.DND_URL_CHANGED, url)
   })
   r20.webContents.on('did-navigate', (_e, url) => {
     store.set('lastRoll20Url', url)
@@ -146,10 +198,26 @@ export function createWindowWithPanels(): BrowserWindow {
     store.set('lastRoll20Url', url)
     win.webContents.send(IPC_CHANNELS.ROLL20_URL_CHANGED, url)
   })
-
-  // Load saved URLs
-  dndb.webContents.loadURL(store.get('lastDndUrl'))
   r20.webContents.loadURL(store.get('lastRoll20Url'))
+
+  // Load saved panels
+  const savedPanels = store.get('panels')
+  for (const config of savedPanels) {
+    const view = createPanelView(config.id, config.url)
+    const state: PanelState = {
+      id: config.id,
+      view,
+      title: config.url,
+      url: config.url,
+      width: config.width
+    }
+    panelMap.set(config.id, state)
+    win.contentView.addChildView(view)
+    hidePanel(state)
+  }
+
+  layoutRoll20()
+  win.on('resize', onWindowResize)
 
   // Renderer diagnostics
   win.webContents.on('console-message', (_e, level, message, line, sourceId) => {
@@ -169,30 +237,157 @@ export function createWindowWithPanels(): BrowserWindow {
   win.loadFile(join(__dirname, '../renderer/index.html'))
 
   win.on('closed', () => {
-    console.log('[Window] Closed')
     if (animationTimer !== null) {
       clearInterval(animationTimer)
       animationTimer = null
     }
     mainWindow = null
-    dndView = null
     roll20View = null
+    panelMap.clear()
+    activePanelId = null
   })
 
   return win
 }
 
-function layoutPanels(): void {
-  if (!mainWindow || !dndView || !roll20View) return
+// ─── Private helpers ──────────────────────────────────────────────────────────
 
+function createPanelView(id: string, url: string): WebContentsView {
+  const view = new WebContentsView({
+    webPreferences: {
+      session: session.defaultSession,
+      nodeIntegration: false,
+      contextIsolation: true
+    }
+  })
+
+  view.webContents.setWindowOpenHandler(({ url: u }) => {
+    shell.openExternal(u)
+    return { action: 'deny' }
+  })
+
+  view.webContents.on('did-navigate', (_e, newUrl) => {
+    const state = panelMap.get(id)
+    if (state) state.url = newUrl
+    persistPanels()
+    mainWindow?.webContents.send(IPC_CHANNELS.PANEL_URL_CHANGED, id, newUrl)
+    sendPanelListUpdate()
+  })
+
+  view.webContents.on('did-navigate-in-page', (_e, newUrl) => {
+    const state = panelMap.get(id)
+    if (state) state.url = newUrl
+    mainWindow?.webContents.send(IPC_CHANNELS.PANEL_URL_CHANGED, id, newUrl)
+  })
+
+  view.webContents.on('page-title-updated', (_e, title) => {
+    const state = panelMap.get(id)
+    if (state) state.title = title
+    mainWindow?.webContents.send(IPC_CHANNELS.PANEL_TITLE_UPDATED, id, title)
+    sendPanelListUpdate()
+  })
+
+  view.webContents.loadURL(url)
+  return view
+}
+
+function panelStateToInfo(state: PanelState): PanelInfo {
+  return {
+    id: state.id,
+    title: state.title,
+    url: state.url,
+    isOpen: state.id === activePanelId,
+    width: state.width
+  }
+}
+
+function hidePanel(state: PanelState): void {
+  state.view.setBounds({ x: -(state.width + 20), y: TOOLBAR_HEIGHT, width: state.width, height: 0 })
+}
+
+function closeActivePanel(): void {
+  if (activePanelId === null) return
+  const id = activePanelId
+  activePanelId = null
+  animatePanel(id, false)
+}
+
+function animatePanel(id: string, open: boolean): void {
+  const state = panelMap.get(id)
+  if (!mainWindow || !state) return
+
+  const [winWidth, winHeight] = mainWindow.getContentSize()
+  const maxW = Math.floor(winWidth * MAX_PANEL_WIDTH_FRACTION)
+  const panelW = Math.max(MIN_PANEL_WIDTH, Math.min(state.width, maxW))
+  const panelH = Math.max(0, winHeight - TOOLBAR_HEIGHT)
+
+  const startX = open ? -panelW : 0
+  const endX = open ? 0 : -panelW
+  const startTime = Date.now()
+
+  if (animationTimer !== null) {
+    clearInterval(animationTimer)
+    animationTimer = null
+  }
+
+  if (open) {
+    state.view.setBounds({ x: startX, y: TOOLBAR_HEIGHT, width: panelW, height: panelH })
+  }
+
+  animationTimer = setInterval(() => {
+    if (!state.view || !mainWindow) {
+      clearInterval(animationTimer!)
+      animationTimer = null
+      return
+    }
+
+    const elapsed = Date.now() - startTime
+    const t = Math.min(elapsed / ANIM_DURATION_MS, 1)
+    const eased = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
+    const x = Math.round(startX + (endX - startX) * eased)
+
+    state.view.setBounds({ x, y: TOOLBAR_HEIGHT, width: panelW, height: panelH })
+
+    if (t >= 1) {
+      clearInterval(animationTimer!)
+      animationTimer = null
+      sendPanelListUpdate()
+    }
+  }, Math.round(1000 / ANIM_FPS))
+}
+
+function layoutRoll20(): void {
+  if (!mainWindow || !roll20View) return
   const [width, height] = mainWindow.getContentSize()
   const panelH = Math.max(0, height - TOOLBAR_HEIGHT)
-  const panelW = dndPanelWidth(width)
-
-  // Roll20 always fills the full panel area
   roll20View.setBounds({ x: 0, y: TOOLBAR_HEIGHT, width, height: panelH })
+}
 
-  // D&D Beyond: off-screen left when closed, at x=0 when open
-  const dndX = dndPanelOpen ? 0 : -panelW
-  dndView.setBounds({ x: dndX, y: TOOLBAR_HEIGHT, width: panelW, height: panelH })
+function onWindowResize(): void {
+  if (!mainWindow) return
+  layoutRoll20()
+
+  if (activePanelId !== null) {
+    const state = panelMap.get(activePanelId)
+    if (state) {
+      const [winWidth, winHeight] = mainWindow.getContentSize()
+      const maxW = Math.floor(winWidth * MAX_PANEL_WIDTH_FRACTION)
+      const w = Math.max(MIN_PANEL_WIDTH, Math.min(state.width, maxW))
+      const panelH = Math.max(0, winHeight - TOOLBAR_HEIGHT)
+      state.view.setBounds({ x: 0, y: TOOLBAR_HEIGHT, width: w, height: panelH })
+    }
+  }
+}
+
+function persistPanels(): void {
+  const configs = Array.from(panelMap.values()).map((p) => ({
+    id: p.id,
+    url: p.url,
+    width: p.width
+  }))
+  store.set('panels', configs)
+}
+
+function sendPanelListUpdate(): void {
+  mainWindow?.webContents.send(IPC_CHANNELS.PANEL_LIST_UPDATED, getPanelInfoList())
 }

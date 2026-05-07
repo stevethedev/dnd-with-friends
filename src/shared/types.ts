@@ -14,10 +14,25 @@ export interface Beyond20Status {
   error?: string
 }
 
+export interface PanelConfig {
+  id: string
+  url: string
+  width: number
+}
+
+export interface PanelInfo {
+  id: string
+  title: string
+  url: string
+  isOpen: boolean
+  width: number
+}
+
 export interface StoreSchema {
   beyond20Version: string | null
-  lastDndUrl: string
   lastRoll20Url: string
+  panels: PanelConfig[]
+  nextPanelId: number
 }
 
 export interface GitHubAsset {
