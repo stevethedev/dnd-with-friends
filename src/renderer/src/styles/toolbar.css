@@ -1,0 +1,177 @@
+/* Reset — body/html are transparent and non-interactive below the toolbar */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: #1a1a2e;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#root {
+  width: 100vw;
+  height: 48px; /* Only occupy the toolbar height — WebContentsViews cover the rest */
+  background: #1a1a2e;
+}
+
+/* ─── Toolbar ─────────────────────────────────────────────────────────────── */
+
+.toolbar {
+  /* Must be exactly TOOLBAR_HEIGHT (48px) — kept in sync with src/shared/constants.ts */
+  height: 48px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  background: #1a1a2e;
+  border-bottom: 1px solid #2d2d4e;
+  color: #e0e0e0;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+
+  /* Re-enable pointer events only for the toolbar itself */
+  pointer-events: all;
+
+  /* Make the toolbar draggable as the window title bar */
+  -webkit-app-region: drag;
+}
+
+/* ─── Panel sections ─────────────────────────────────────────────────────── */
+
+.toolbar__panel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  -webkit-app-region: no-drag;
+}
+
+.toolbar__panel--right {
+  justify-content: flex-end;
+}
+
+.toolbar__panel-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #888;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.toolbar__url-input {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  padding: 0 8px;
+  background: #0d0d1a;
+  border: 1px solid #3a3a5c;
+  border-radius: 4px;
+  color: #e0e0e0;
+  font-size: 12px;
+  outline: none;
+  -webkit-app-region: no-drag;
+}
+
+.toolbar__url-input:focus {
+  border-color: #7c3aed;
+}
+
+.toolbar__btn {
+  flex-shrink: 0;
+  height: 28px;
+  padding: 0 10px;
+  background: #7c3aed;
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+  transition: background 0.15s;
+}
+
+.toolbar__btn:hover {
+  background: #6d28d9;
+}
+
+.toolbar__btn:active {
+  background: #5b21b6;
+}
+
+/* ─── Beyond20 status badge ──────────────────────────────────────────────── */
+
+.toolbar__b20 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 0 10px;
+  -webkit-app-region: no-drag;
+  cursor: default;
+}
+
+.toolbar__b20-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.toolbar__b20-dot--loaded   { background: #22c55e; }
+.toolbar__b20-dot--offline  { background: #f59e0b; }
+.toolbar__b20-dot--checking,
+.toolbar__b20-dot--downloading,
+.toolbar__b20-dot--extracting,
+.toolbar__b20-dot--loading  { background: #60a5fa; animation: pulse 1s infinite; }
+.toolbar__b20-dot--error    { background: #ef4444; }
+.toolbar__b20-dot--idle     { background: #6b7280; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+.toolbar__b20-label {
+  font-size: 11px;
+  color: #aaa;
+  white-space: nowrap;
+}
+
+/* ─── Window controls (frameless window close/min/max) ───────────────────── */
+
+.toolbar__window-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  -webkit-app-region: no-drag;
+}
+
+.toolbar__wc-btn {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.toolbar__wc-btn--close  { background: #ef4444; }
+.toolbar__wc-btn--min    { background: #f59e0b; }
+.toolbar__wc-btn--max    { background: #22c55e; }
+
+.toolbar__wc-btn:hover {
+  filter: brightness(1.2);
+}
