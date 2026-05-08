@@ -2,7 +2,7 @@ import { BrowserWindow, WebContentsView, session, shell } from 'electron'
 import { join } from 'path'
 import { store } from './store'
 import { IPC_CHANNELS } from '../shared/ipcChannels'
-import { TOOLBAR_HEIGHT } from '../shared/constants'
+import { TOOLBAR_HEIGHT, RESIZE_HANDLE_WIDTH } from '../shared/constants'
 import type { PanelConfig, PanelInfo } from '../shared/types'
 
 // ─── Internal state ──────────────────────────────────────────────────────────
@@ -17,6 +17,7 @@ interface PanelState {
 
 const panelMap = new Map<string, PanelState>()
 let activePanelId: string | null = null
+let resizeHandleView: WebContentsView | null = null
 let mainWindow: BrowserWindow | null = null
 let roll20View: WebContentsView | null = null
 let animationTimer: ReturnType<typeof setInterval> | null = null
@@ -65,7 +66,12 @@ export function addPanel(config: PanelConfig): PanelInfo {
   }
   panelMap.set(config.id, state)
 
-  if (mainWindow) {
+  if (mainWindow && resizeHandleView) {
+    // Keep resize handle last (highest z-order)
+    mainWindow.contentView.removeChildView(resizeHandleView)
+    mainWindow.contentView.addChildView(view)
+    mainWindow.contentView.addChildView(resizeHandleView)
+  } else if (mainWindow) {
     mainWindow.contentView.addChildView(view)
   }
 
@@ -132,8 +138,20 @@ export function updatePanelWidth(id: string, rawWidth: number): void {
   state.view.setBounds({ x: 0, y: TOOLBAR_HEIGHT, width: w, height: panelH })
 }
 
-/** Called at drag end — persist and notify renderer. */
-export function finalizePanelWidth(id: string, rawWidth: number): void {
+/** Expand the resize handle view to full window width so mousemove covers everything. */
+export function startPanelDrag(id: string): void {
+  if (!mainWindow || !resizeHandleView) return
+  const [winWidth, winHeight] = mainWindow.getContentSize()
+  resizeHandleView.setBounds({
+    x: 0,
+    y: TOOLBAR_HEIGHT,
+    width: winWidth,
+    height: Math.max(0, winHeight - TOOLBAR_HEIGHT)
+  })
+}
+
+/** Finalize width on drag end and shrink the handle view back to 8px. */
+export function endPanelDrag(id: string, rawWidth: number): void {
   if (!mainWindow) return
   const state = panelMap.get(id)
   if (!state) return
@@ -143,9 +161,13 @@ export function finalizePanelWidth(id: string, rawWidth: number): void {
   const w = Math.max(MIN_PANEL_WIDTH, Math.min(rawWidth, maxW))
   state.width = w
 
+  const panelH = Math.max(0, winHeight - TOOLBAR_HEIGHT)
+
   if (activePanelId === id) {
-    const panelH = Math.max(0, winHeight - TOOLBAR_HEIGHT)
     state.view.setBounds({ x: 0, y: TOOLBAR_HEIGHT, width: w, height: panelH })
+    repositionResizeHandle(w, panelH)
+    // Tell handle renderer the new width for next drag
+    resizeHandleView?.webContents.send(IPC_CHANNELS.RESIZE_HANDLE_INIT, id, w)
   }
 
   persistPanels()
@@ -180,10 +202,25 @@ export function createWindowWithPanels(): BrowserWindow {
     }
   })
 
+  // Resize handle — added last so it's always above all panel views
+  const resizeHandle = new WebContentsView({
+    webPreferences: {
+      preload: join(__dirname, '../preload/resize-handle.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false
+    }
+  })
+  // Transparent background so the expanded drag-capture view doesn't cover the underlying
+  // panel and Roll20 WebContentsViews when the user is mid-drag.
+  resizeHandle.setBackgroundColor('rgba(0, 0, 0, 0.001)')
+
   win.contentView.addChildView(r20)
+  // Panel views will be inserted between r20 and resizeHandle as they're created
 
   mainWindow = win
   roll20View = r20
+  resizeHandleView = resizeHandle
 
   // Set up Roll20
   r20.webContents.setWindowOpenHandler(({ url }) => {
@@ -216,6 +253,17 @@ export function createWindowWithPanels(): BrowserWindow {
     hidePanel(state)
   }
 
+  // Resize handle added LAST — always highest z-order (above all panels + Roll20)
+  win.contentView.addChildView(resizeHandle)
+  const resizeHandlePath = join(__dirname, '../renderer/resize-handle.html')
+  console.log('[ResizeHandle] Loading from:', resizeHandlePath)
+  resizeHandle.webContents.loadFile(resizeHandlePath)
+  resizeHandle.webContents.on('did-finish-load', () => console.log('[ResizeHandle] Loaded'))
+  resizeHandle.webContents.on('did-fail-load', (_e, code, desc, url) =>
+    console.error('[ResizeHandle] Failed to load:', url, code, desc)
+  )
+  hideResizeHandle()
+
   layoutRoll20()
   win.on('resize', onWindowResize)
 
@@ -243,6 +291,7 @@ export function createWindowWithPanels(): BrowserWindow {
     }
     mainWindow = null
     roll20View = null
+    resizeHandleView = null
     panelMap.clear()
     activePanelId = null
   })
@@ -332,6 +381,8 @@ function animatePanel(id: string, open: boolean): void {
 
   if (open) {
     state.view.setBounds({ x: startX, y: TOOLBAR_HEIGHT, width: panelW, height: panelH })
+    // Position handle immediately so it's visible from frame 1
+    repositionResizeHandle(startX + panelW, panelH)
   }
 
   animationTimer = setInterval(() => {
@@ -348,12 +399,40 @@ function animatePanel(id: string, open: boolean): void {
 
     state.view.setBounds({ x, y: TOOLBAR_HEIGHT, width: panelW, height: panelH })
 
+    if (open) {
+      repositionResizeHandle(x + panelW, panelH)
+    }
+
     if (t >= 1) {
       clearInterval(animationTimer!)
       animationTimer = null
+
+      if (open) {
+        resizeHandleView?.webContents.send(IPC_CHANNELS.RESIZE_HANDLE_INIT, id, panelW)
+        repositionResizeHandle(panelW, panelH)
+      } else {
+        hideResizeHandle()
+      }
+
       sendPanelListUpdate()
     }
   }, Math.round(1000 / ANIM_FPS))
+}
+
+function repositionResizeHandle(panelRightEdge: number, panelH: number): void {
+  resizeHandleView?.setBounds({
+    x: panelRightEdge,
+    y: TOOLBAR_HEIGHT,
+    width: RESIZE_HANDLE_WIDTH,
+    height: panelH
+  })
+}
+
+function hideResizeHandle(): void {
+  if (!resizeHandleView) {
+    throw new Error("No resize handle view")
+  }
+  resizeHandleView.setBounds({ x: -20, y: TOOLBAR_HEIGHT, width: RESIZE_HANDLE_WIDTH, height: 0 })
 }
 
 function layoutRoll20(): void {
@@ -375,6 +454,7 @@ function onWindowResize(): void {
       const w = Math.max(MIN_PANEL_WIDTH, Math.min(state.width, maxW))
       const panelH = Math.max(0, winHeight - TOOLBAR_HEIGHT)
       state.view.setBounds({ x: 0, y: TOOLBAR_HEIGHT, width: w, height: panelH })
+      repositionResizeHandle(w, panelH)
     }
   }
 }

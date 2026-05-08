@@ -24,6 +24,10 @@ export const IPC_CHANNELS = {
   // Resize handle view init (main → resize-handle renderer)
   RESIZE_HANDLE_INIT: 'resize-handle:init', // (panelId, currentWidth)
 
+  // Drag lifecycle (resize-handle renderer → main)
+  RESIZE_DRAG_START: 'resize:drag-start',  // (panelId) — expand view to full window
+  RESIZE_DRAG_END: 'resize:drag-end',      // (panelId, finalWidth) — shrink view back
+
   // Beyond20 status
   BEYOND20_STATUS: 'beyond20:status',
   BEYOND20_UPDATE: 'beyond20:update-event',

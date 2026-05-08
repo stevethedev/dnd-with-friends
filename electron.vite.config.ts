@@ -18,7 +18,8 @@ export default defineConfig({
     build: {
       rollupOptions: {
         input: {
-          index: resolve(__dirname, 'src/preload/index.ts')
+          index: resolve(__dirname, 'src/preload/index.ts'),
+          'resize-handle': resolve(__dirname, 'src/preload/resize-handle.ts')
         }
       }
     }
@@ -29,7 +30,8 @@ export default defineConfig({
     build: {
       rollupOptions: {
         input: {
-          index: resolve(__dirname, 'src/renderer/index.html')
+          index: resolve(__dirname, 'src/renderer/index.html'),
+          'resize-handle': resolve(__dirname, 'src/renderer/resize-handle.html')
         }
       }
     }

@@ -10,7 +10,8 @@ import {
   navigatePanel,
   getPanelUrl,
   updatePanelWidth,
-  finalizePanelWidth
+  startPanelDrag,
+  endPanelDrag
 } from './windowManager'
 import { getBeyond20Status } from './beyond20Manager'
 import { store } from './store'
@@ -31,14 +32,11 @@ function sanitizeUrl(url: string): string {
 let nextIdCounter = 0
 
 export function registerIpcHandlers(): void {
-  // Seed the counter from store so IDs survive restarts
   nextIdCounter = store.get('nextPanelId')
 
   // ── Panel CRUD ─────────────────────────────────────────────────────────────
 
-  ipcMain.handle(IPC_CHANNELS.PANEL_LIST, () => {
-    return getPanelInfoList()
-  })
+  ipcMain.handle(IPC_CHANNELS.PANEL_LIST, () => getPanelInfoList())
 
   ipcMain.handle(IPC_CHANNELS.PANEL_CREATE, (_event, url: string) => {
     const safeUrl = sanitizeUrl(url)
@@ -64,14 +62,20 @@ export function registerIpcHandlers(): void {
     return getPanelUrl(panelId)
   })
 
-  // ── Resize (fire-and-forget — ipcMain.on) ──────────────────────────────────
+  // ── Resize during drag (fire-and-forget) ──────────────────────────────────
 
   ipcMain.on(IPC_CHANNELS.PANEL_RESIZE, (_event, panelId: string, newWidth: number) => {
     updatePanelWidth(panelId, newWidth)
   })
 
-  ipcMain.on(IPC_CHANNELS.PANEL_RESIZE_END, (_event, panelId: string, finalWidth: number) => {
-    finalizePanelWidth(panelId, finalWidth)
+  // ── Drag lifecycle ────────────────────────────────────────────────────────
+
+  ipcMain.on(IPC_CHANNELS.RESIZE_DRAG_START, (_event, panelId: string) => {
+    startPanelDrag(panelId)
+  })
+
+  ipcMain.on(IPC_CHANNELS.RESIZE_DRAG_END, (_event, panelId: string, finalWidth: number) => {
+    endPanelDrag(panelId, finalWidth)
   })
 
   // ── Roll20 ─────────────────────────────────────────────────────────────────
@@ -86,15 +90,11 @@ export function registerIpcHandlers(): void {
 
   // ── Beyond20 ──────────────────────────────────────────────────────────────
 
-  ipcMain.handle(IPC_CHANNELS.BEYOND20_STATUS, () => {
-    return getBeyond20Status()
-  })
+  ipcMain.handle(IPC_CHANNELS.BEYOND20_STATUS, () => getBeyond20Status())
 
   // ── Window controls ────────────────────────────────────────────────────────
 
-  ipcMain.handle(IPC_CHANNELS.WINDOW_MINIMIZE, () => {
-    getMainWindow().minimize()
-  })
+  ipcMain.handle(IPC_CHANNELS.WINDOW_MINIMIZE, () => getMainWindow().minimize())
 
   ipcMain.handle(IPC_CHANNELS.WINDOW_MAXIMIZE, () => {
     const win = getMainWindow()
@@ -102,7 +102,5 @@ export function registerIpcHandlers(): void {
     else win.maximize()
   })
 
-  ipcMain.handle(IPC_CHANNELS.WINDOW_CLOSE, () => {
-    getMainWindow().close()
-  })
+  ipcMain.handle(IPC_CHANNELS.WINDOW_CLOSE, () => getMainWindow().close())
 }

@@ -3,7 +3,6 @@ import { WindowControls } from './WindowControls'
 import { Beyond20Status } from './Beyond20Status'
 import { Roll20Panel } from './Roll20Panel'
 import { PanelButton } from './PanelButton'
-import { ResizeHandle } from './ResizeHandle'
 import { usePanels } from '../hooks/usePanels'
 import { DEFAULT_DND_URL } from '../../../shared/constants'
 
@@ -44,56 +43,50 @@ export function Toolbar(): React.JSX.Element {
   }
 
   return (
-    <>
-      <div className="toolbar">
-        <WindowControls />
+    <div className="toolbar">
+      <WindowControls />
 
-        {/* Panel toggle buttons */}
-        {panels.map((panel) => (
-          <PanelButton
-            key={panel.id}
-            panel={panel}
-            onToggle={toggle}
-            onRemove={removePanel}
+      {/* Panel toggle buttons */}
+      {panels.map((panel) => (
+        <PanelButton
+          key={panel.id}
+          panel={panel}
+          onToggle={toggle}
+          onRemove={removePanel}
+        />
+      ))}
+
+      {/* Add new panel */}
+      <button
+        className="toolbar__add-panel"
+        onClick={handleAddPanel}
+        title="Add a new D&D Beyond panel"
+        aria-label="Add panel"
+      >
+        +
+      </button>
+
+      {/* URL bar for active panel */}
+      {activePanel && (
+        <div className="toolbar__active-url">
+          <input
+            className="toolbar__url-input"
+            type="text"
+            value={urlInput}
+            onChange={(e) => setUrlInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="https://..."
+            aria-label={`URL for ${activePanel.title}`}
+            spellCheck={false}
           />
-        ))}
+          <button className="toolbar__btn" onClick={handleGo}>
+            Go
+          </button>
+        </div>
+      )}
 
-        {/* Add new panel */}
-        <button
-          className="toolbar__add-panel"
-          onClick={handleAddPanel}
-          title="Add a new D&D Beyond panel"
-          aria-label="Add panel"
-        >
-          +
-        </button>
-
-        {/* URL bar for active panel */}
-        {activePanel && (
-          <div className="toolbar__active-url">
-            <input
-              className="toolbar__url-input"
-              type="text"
-              value={urlInput}
-              onChange={(e) => setUrlInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="https://..."
-              aria-label={`URL for ${activePanel.title}`}
-              spellCheck={false}
-            />
-            <button className="toolbar__btn" onClick={handleGo}>
-              Go
-            </button>
-          </div>
-        )}
-
-        <Beyond20Status />
-        <Roll20Panel />
-      </div>
-
-      {/* Resize handle — rendered as a full-height overlay so pointer capture
-          works even when the mouse leaves the 8px strip during a drag. */}
-      {activePanel && <ResizeHandle panel={activePanel} />}
-    </>
+      <Beyond20Status />
+      <Roll20Panel />
+    </div>
   )
 }

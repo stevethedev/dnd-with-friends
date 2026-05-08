@@ -9,47 +9,16 @@ html,
 body {
   margin: 0;
   padding: 0;
-  background: transparent;
+  background: #1a1a2e;
   overflow: hidden;
   user-select: none;
   -webkit-user-select: none;
-  /* Clicks pass through to WebContentsViews except where explicitly enabled */
-  pointer-events: none;
 }
 
 #root {
   width: 100vw;
-  /* Full height so the resize handle overlay can span below the toolbar.
-     Everything below the 48px toolbar bar has pointer-events:none. */
-  height: 100vh;
-  background: transparent;
-  position: relative;
-}
-
-/* ─── Resize handle overlay ──────────────────────────────────────────────── */
-
-.resize-handle {
-  position: fixed;
-  top: 48px; /* below toolbar */
-  /* left is set inline from React (panel.width px) */
-  width: 8px;
-  height: calc(100vh - 48px);
-  cursor: ew-resize;
-  background: #2d2d4e;
-  border-left: 1px solid #4a4a7a;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  -webkit-app-region: no-drag;
-  pointer-events: all;
-  z-index: 10;
-  transition: background 0.1s, border-color 0.1s;
-}
-
-.resize-handle:hover,
-.resize-handle--dragging {
-  background: #3d3d6e;
-  border-left-color: #7c3aed;
+  height: 48px;
+  background: #1a1a2e;
 }
 
 /* ─── Toolbar ─────────────────────────────────────────────────────────────── */
@@ -67,7 +36,6 @@ body {
   font-family: system-ui, -apple-system, sans-serif;
   font-size: 13px;
   -webkit-app-region: drag;
-  pointer-events: all;
 }
 
 /* ─── Panel toggle button group ──────────────────────────────────────────── */
@@ -96,11 +64,6 @@ body {
   transition: background 0.15s, border-color 0.15s;
   -webkit-app-region: no-drag;
   max-width: 160px;
-}
-
-/* When there's no remove button, the toggle gets full border-radius */
-.toolbar__panel-btn-group:not(:has(.toolbar__panel-remove)) .toolbar__panel-toggle {
-  border-radius: 6px;
 }
 
 .toolbar__panel-toggle:hover {
