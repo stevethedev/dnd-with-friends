@@ -13,6 +13,7 @@ import {
   WINDOW_DEFAULT_HEIGHT,
   MIN_WINDOW_WIDTH,
   MIN_WINDOW_HEIGHT,
+  DEFAULT_ROLL20_URL,
 } from "../shared/constants";
 import type { PanelConfig, PanelInfo } from "../shared/types";
 
@@ -71,6 +72,34 @@ export function getMainWindow(): BrowserWindow {
 export function getRoll20View(): WebContentsView {
   if (!roll20View) throw new Error("Roll20 view not yet created");
   return roll20View;
+}
+
+export function getResizeHandleView(): WebContentsView | null {
+  return resizeHandleView;
+}
+
+// ─── Security helpers ─────────────────────────────────────────────────────────
+
+/** Return true only for well-formed http/https URLs. */
+function isHttpUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Open a URL in the system browser, but only if it is a well-formed http/https URL.
+ * Blocks file://, javascript:, custom protocol handlers, and malformed strings.
+ */
+function safeOpenExternal(url: string): void {
+  if (isHttpUrl(url)) {
+    void shell.openExternal(url);
+  } else {
+    console.warn("[Security] Blocked non-http(s) URL from shell.openExternal:", url);
+  }
 }
 
 export function getPanelInfoList(): PanelInfo[] {
@@ -224,11 +253,19 @@ export function createWindowWithPanels(): BrowserWindow {
       preload: join(__dirname, "../preload/index.js"),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
+      sandbox: true,
+      webSecurity: true,
+      allowRunningInsecureContent: false,
     },
   });
 
   mainWindow = win;
+
+  // Block any navigation away from the local index.html.
+  // The toolbar renderer is a static file; it should never navigate anywhere.
+  win.webContents.on("will-navigate", (event) => {
+    event.preventDefault();
+  });
 
   // Z-order: Roll20 (bottom) → panel views (middle) → resize handle (top)
   roll20View = createRoll20View(win);
@@ -270,12 +307,23 @@ function createRoll20View(win: BrowserWindow): WebContentsView {
       session: session.defaultSession,
       nodeIntegration: false,
       contextIsolation: true,
+      sandbox: true,
+      webSecurity: true,
+      allowRunningInsecureContent: false,
     },
   });
 
-  // Redirect popup clicks to system browser instead of opening new Electron windows
+  // Block navigation to non-http(s) schemes (e.g. file://, javascript:)
+  view.webContents.on("will-navigate", (event, url) => {
+    if (!isHttpUrl(url)) {
+      console.warn("[Security] Roll20 view blocked navigation to:", url);
+      event.preventDefault();
+    }
+  });
+
+  // Redirect popup clicks to system browser; validate URL before opening
   view.webContents.setWindowOpenHandler(({ url }) => {
-    void shell.openExternal(url);
+    safeOpenExternal(url);
     return { action: "deny" };
   });
 
@@ -288,7 +336,10 @@ function createRoll20View(win: BrowserWindow): WebContentsView {
     pushEvent(win, "roll20.urlChanged", url);
   });
 
-  void view.webContents.loadURL(store.get("lastRoll20Url"));
+  const savedUrl = store.get("lastRoll20Url");
+  void view.webContents.loadURL(
+    isHttpUrl(savedUrl) ? savedUrl : DEFAULT_ROLL20_URL,
+  );
   return view;
 }
 
@@ -299,7 +350,7 @@ function createResizeHandleView(): WebContentsView {
       preload: join(__dirname, "../preload/resize-handle.js"),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
+      sandbox: true,
     },
   });
 
@@ -323,6 +374,10 @@ function createResizeHandleView(): WebContentsView {
 /** Read saved panel configs from the store, create views, and add them to the window. */
 function loadPersistedPanels(win: BrowserWindow): void {
   for (const config of store.get("panels")) {
+    if (!isHttpUrl(config.url)) {
+      console.warn("[Security] Skipping persisted panel with invalid URL:", config.id);
+      continue;
+    }
     const view = createPanelView(config.id, config.url);
     const state: PanelState = {
       id: config.id,
@@ -373,12 +428,23 @@ function createPanelView(id: string, url: string): WebContentsView {
       session: session.defaultSession,
       nodeIntegration: false,
       contextIsolation: true,
+      sandbox: true,
+      webSecurity: true,
+      allowRunningInsecureContent: false,
     },
   });
 
-  // Redirect popup clicks to system browser instead of opening new Electron windows
+  // Block navigation to non-http(s) schemes (e.g. file://, javascript:)
+  view.webContents.on("will-navigate", (event, navUrl) => {
+    if (!isHttpUrl(navUrl)) {
+      console.warn("[Security] Panel view blocked navigation to:", navUrl);
+      event.preventDefault();
+    }
+  });
+
+  // Redirect popup clicks to system browser; validate URL before opening
   view.webContents.setWindowOpenHandler(({ url: u }) => {
-    void shell.openExternal(u);
+    safeOpenExternal(u);
     return { action: "deny" };
   });
 

@@ -15,7 +15,9 @@ export default defineConfig({
     },
   },
   preload: {
-    plugins: [externalizeDepsPlugin()],
+    // zod must be bundled (not externalized) because sandbox:true preloads
+    // cannot require() npm packages at runtime — only Electron built-ins are available.
+    plugins: [externalizeDepsPlugin({ exclude: ["zod"] })],
     build: {
       sourcemap: true,
       rollupOptions: {

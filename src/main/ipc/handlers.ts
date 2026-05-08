@@ -11,6 +11,7 @@ import {
   navigatePanel,
   getPanelUrl,
   getMainWindow,
+  getResizeHandleView,
   updatePanelWidth,
   startPanelDrag,
   endPanelDrag,
@@ -58,18 +59,28 @@ export function createHandlers(): HandlerMap {
 }
 
 export function registerResizeHandlers(): void {
+  // Verify that resize messages originate from the resize-handle view only.
+  // This prevents any other renderer (including compromised panel content) from
+  // injecting fake drag events to manipulate panel layout.
+  function isResizeSender(sender: Electron.WebContents): boolean {
+    return sender === getResizeHandleView()?.webContents;
+  }
+
   ipcMain.on(
     IPC_CHANNELS.PANEL_RESIZE,
-    (_e, panelId: string, newWidth: number) => {
+    (e, panelId: string, newWidth: number) => {
+      if (!isResizeSender(e.sender)) return;
       updatePanelWidth(panelId, newWidth);
     },
   );
-  ipcMain.on(IPC_CHANNELS.RESIZE_DRAG_START, () => {
+  ipcMain.on(IPC_CHANNELS.RESIZE_DRAG_START, (e) => {
+    if (!isResizeSender(e.sender)) return;
     startPanelDrag();
   });
   ipcMain.on(
     IPC_CHANNELS.RESIZE_DRAG_END,
-    (_e, panelId: string, finalWidth: number) => {
+    (e, panelId: string, finalWidth: number) => {
+      if (!isResizeSender(e.sender)) return;
       endPanelDrag(panelId, finalWidth);
     },
   );

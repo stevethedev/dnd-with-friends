@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'"
+      content="default-src 'self'; style-src 'unsafe-inline'"
     />
     <style>
       *,
@@ -77,61 +77,6 @@
         <div class="dot"></div>
       </div>
     </div>
-    <script>
-      var MIN_PANEL_WIDTH = 320; // canonical value: shared/constants.ts MIN_PANEL_WIDTH
-      var panelId = null;
-      var panelWidth = 0;
-      var isDragging = false;
-      var startScreenX = 0;
-      var startWidth = 0;
-      var handle = document.getElementById("handle");
-
-      window.resizeAPI.onInit(function (pid, width) {
-        panelId = pid;
-        panelWidth = width;
-      });
-
-      // ── Drag start ──────────────────────────────────────────────────────────
-      handle.addEventListener("mousedown", function (e) {
-        if (e.button !== 0 || !panelId) return;
-        isDragging = true;
-        startScreenX = e.screenX;
-        startWidth = panelWidth;
-
-        // Pin the handle bar at its current screen position so it stays
-        // visible when the view expands to cover the full window.
-        handle.style.left = startWidth + "px";
-
-        document.body.classList.add("dragging");
-        window.resizeAPI.startDrag(panelId);
-        e.preventDefault();
-      });
-
-      // ── Drag move ───────────────────────────────────────────────────────────
-      document.addEventListener("mousemove", function (e) {
-        if (!isDragging) return;
-        var delta = e.screenX - startScreenX;
-        var newWidth = Math.max(MIN_PANEL_WIDTH, startWidth + delta);
-        // Keep the visual bar tracking the drag position
-        handle.style.left = newWidth + "px";
-        window.resizeAPI.resize(panelId, newWidth);
-      });
-
-      // ── Drag end ────────────────────────────────────────────────────────────
-      document.addEventListener("mouseup", function (e) {
-        if (!isDragging || e.button !== 0) return;
-        isDragging = false;
-        document.body.classList.remove("dragging");
-
-        var delta = e.screenX - startScreenX;
-        var newWidth = Math.max(MIN_PANEL_WIDTH, startWidth + delta);
-        panelWidth = newWidth;
-
-        // Reset handle to fill the (now-shrunk-back) 8px view
-        handle.style.left = "0";
-
-        window.resizeAPI.endDrag(panelId, newWidth);
-      });
-    </script>
+    <script type="module" src="./src/resize-handle.ts"></script>
   </body>
 </html>

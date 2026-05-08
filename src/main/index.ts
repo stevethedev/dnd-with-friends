@@ -36,6 +36,17 @@ async function loadBeyond20Extension(extensionDir: string): Promise<boolean> {
 }
 
 void app.whenReady().then(async () => {
+  // Deny all permission requests (camera, microphone, notifications, etc.).
+  // This app loads external web content in panels; those pages must not gain
+  // access to system resources without explicit user consent at the OS level.
+  session.defaultSession.setPermissionRequestHandler(
+    (_webContents, permission, callback) => {
+      console.warn("[Security] Permission request denied:", permission);
+      callback(false);
+    },
+  );
+  session.defaultSession.setPermissionCheckHandler(() => false);
+
   // Step 1: Download / verify Beyond20
   const extensionDir = await ensureLatestBeyond20();
 
