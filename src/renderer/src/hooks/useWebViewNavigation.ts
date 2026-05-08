@@ -1,4 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback } from "react";
+import { ipc } from "../../lib/ipc/client";
+import { useIpcState } from "../../lib/ipc/hooks";
 import { normalizeUrl } from "../../../shared/utils";
 
 interface PanelNavigation {
@@ -7,23 +9,12 @@ interface PanelNavigation {
 }
 
 export function useRoll20Navigation(): PanelNavigation {
-  const [currentUrl, setCurrentUrl] = useState("");
-
-  useEffect(() => {
-    window.electronAPI
-      .getRoll20Url()
-      .then((url) => {
-        if (url) setCurrentUrl(url);
-      })
-      .catch(console.error);
-    return window.electronAPI.onRoll20UrlChanged((url) => {
-      setCurrentUrl(url);
-    });
-  }, []);
+  const currentUrl =
+    useIpcState(ipc.roll20.getUrl, ipc.roll20.onUrlChanged) ?? "";
 
   const navigate = useCallback((url: string): void => {
     if (!url.trim()) return;
-    window.electronAPI.navigateRoll20(normalizeUrl(url)).catch(console.error);
+    void ipc.roll20.navigate({ url: normalizeUrl(url) });
   }, []);
 
   return { currentUrl, navigate };

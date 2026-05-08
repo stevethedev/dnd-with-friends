@@ -1,4 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback } from "react";
+import { ipc } from "../../lib/ipc/client";
+import { useIpcState } from "../../lib/ipc/hooks";
 import type { PanelInfo } from "../../../shared/types";
 import { normalizeUrl } from "../../../shared/utils";
 
@@ -11,41 +13,24 @@ interface PanelControl {
 }
 
 export function usePanels(): PanelControl {
-  const [panels, setPanels] = useState<PanelInfo[]>([]);
+  const panels =
+    useIpcState(ipc.panels.list, ipc.panels.onListUpdated) ??
+    ([] as PanelInfo[]);
 
-  useEffect(() => {
-    window.electronAPI.listPanels().then(setPanels).catch(console.error);
-    const unsub = window.electronAPI.onPanelListUpdated(setPanels);
-    return unsub;
-  }, []);
-
-  const toggle = useCallback((panelId: string): void => {
-    window.electronAPI
-      .togglePanel(panelId)
-      .then(setPanels)
-      .catch(console.error);
+  const toggle = useCallback((id: string): void => {
+    void ipc.panels.toggle({ id });
   }, []);
 
   const createPanel = useCallback((url: string): void => {
-    window.electronAPI
-      .createPanel(url)
-      .then(() => {
-        window.electronAPI.listPanels().then(setPanels).catch(console.error);
-      })
-      .catch(console.error);
+    void ipc.panels.create({ url });
   }, []);
 
-  const removePanel = useCallback((panelId: string): void => {
-    window.electronAPI
-      .removePanel(panelId)
-      .then(setPanels)
-      .catch(console.error);
+  const removePanel = useCallback((id: string): void => {
+    void ipc.panels.remove({ id });
   }, []);
 
-  const navigatePanel = useCallback((panelId: string, url: string): void => {
-    window.electronAPI
-      .navigatePanel(panelId, normalizeUrl(url))
-      .catch(console.error);
+  const navigatePanel = useCallback((id: string, url: string): void => {
+    void ipc.panels.navigate({ id, url: normalizeUrl(url) });
   }, []);
 
   return { panels, toggle, createPanel, removePanel, navigatePanel };

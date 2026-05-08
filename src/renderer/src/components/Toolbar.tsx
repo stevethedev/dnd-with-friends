@@ -4,6 +4,7 @@ import { Beyond20Status } from "./Beyond20Status";
 import { Roll20Panel } from "./Roll20Panel";
 import { PanelButton } from "./PanelButton";
 import { usePanels } from "../hooks/usePanels";
+import { ipc } from "../../lib/ipc/client";
 import { DEFAULT_DND_URL } from "../../../shared/constants";
 
 export function Toolbar(): React.JSX.Element {
@@ -16,9 +17,11 @@ export function Toolbar(): React.JSX.Element {
   // Sync URL input when active panel changes
   useEffect(() => {
     if (activePanel) {
-      window.electronAPI
-        .getPanelUrl(activePanel.id)
-        .then(setUrlInput)
+      ipc.panels
+        .getUrl({ id: activePanel.id })
+        .then((r) => {
+          if (r.ok) setUrlInput(r.data);
+        })
         .catch(console.error);
     } else {
       setUrlInput("");
@@ -27,10 +30,9 @@ export function Toolbar(): React.JSX.Element {
 
   // Also sync on URL-change push events
   useEffect(() => {
-    const unsub = window.electronAPI.onPanelUrlChanged((panelId, url) => {
-      if (activePanel && panelId === activePanel.id) setUrlInput(url);
+    return ipc.panels.onUrlChanged(({ id, url }) => {
+      if (activePanel && id === activePanel.id) setUrlInput(url);
     });
-    return unsub;
   }, [activePanel?.id]);
 
   function handleAddPanel(): void {

@@ -1,4 +1,4 @@
-type Beyond20LoadStatus =
+export type Beyond20LoadStatus =
   | "idle"
   | "checking"
   | "downloading"

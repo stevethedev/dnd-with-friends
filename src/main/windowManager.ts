@@ -2,6 +2,7 @@ import { BrowserWindow, WebContentsView, session, shell } from "electron";
 import { join } from "path";
 import { store } from "./store";
 import { IPC_CHANNELS } from "../shared/ipcChannels";
+import { pushEvent } from "./ipc/emitter";
 import {
   TOOLBAR_HEIGHT,
   RESIZE_HANDLE_WIDTH,
@@ -280,11 +281,11 @@ function createRoll20View(win: BrowserWindow): WebContentsView {
 
   view.webContents.on("did-navigate", (_e, url) => {
     store.set("lastRoll20Url", url);
-    win.webContents.send(IPC_CHANNELS.ROLL20_URL_CHANGED, url);
+    pushEvent(win, "roll20.urlChanged", url);
   });
   view.webContents.on("did-navigate-in-page", (_e, url) => {
     store.set("lastRoll20Url", url);
-    win.webContents.send(IPC_CHANNELS.ROLL20_URL_CHANGED, url);
+    pushEvent(win, "roll20.urlChanged", url);
   });
 
   void view.webContents.loadURL(store.get("lastRoll20Url"));
@@ -385,14 +386,14 @@ function createPanelView(id: string, url: string): WebContentsView {
     const state = panelMap.get(id);
     if (state) state.url = newUrl;
     savePanelConfigs();
-    mainWindow?.webContents.send(IPC_CHANNELS.PANEL_URL_CHANGED, id, newUrl);
+    pushEvent(mainWindow, "panel.urlChanged", { id, url: newUrl });
     sendPanelListUpdate();
   });
 
   view.webContents.on("did-navigate-in-page", (_e, newUrl) => {
     const state = panelMap.get(id);
     if (state) state.url = newUrl;
-    mainWindow?.webContents.send(IPC_CHANNELS.PANEL_URL_CHANGED, id, newUrl);
+    pushEvent(mainWindow, "panel.urlChanged", { id, url: newUrl });
   });
 
   view.webContents.on("page-title-updated", (_e, title) => {
@@ -574,8 +575,5 @@ function savePanelConfigs(): void {
 }
 
 function sendPanelListUpdate(): void {
-  mainWindow?.webContents.send(
-    IPC_CHANNELS.PANEL_LIST_UPDATED,
-    getPanelInfoList(),
-  );
+  pushEvent(mainWindow, "panel.listUpdated", getPanelInfoList());
 }

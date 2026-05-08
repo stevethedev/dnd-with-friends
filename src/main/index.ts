@@ -4,8 +4,7 @@ import {
   onBeyond20StatusChange,
 } from "./beyond20Manager";
 import { createWindowWithPanels, getMainWindow } from "./windowManager";
-import { registerIpcHandlers } from "./ipcHandlers";
-import { IPC_CHANNELS } from "../shared/ipcChannels";
+import { registerIpcHandlers, pushEvent } from "./ipc";
 
 // Prevent multiple instances
 if (!app.requestSingleInstanceLock()) {
@@ -59,8 +58,7 @@ void app.whenReady().then(async () => {
   // Step 5: Forward Beyond20 status updates to the renderer
   onBeyond20StatusChange((status) => {
     try {
-      const win = getMainWindow();
-      win.webContents.send(IPC_CHANNELS.BEYOND20_UPDATE, status);
+      pushEvent(getMainWindow(), "beyond20.statusUpdated", status);
     } catch {
       // Window may not exist yet during startup
     }

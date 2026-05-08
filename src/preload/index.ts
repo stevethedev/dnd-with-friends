@@ -1,95 +1,33 @@
 import { contextBridge, ipcRenderer } from "electron";
-import { IPC_CHANNELS } from "../shared/ipcChannels";
-import type { Beyond20Status, PanelInfo } from "../shared/types";
+import type { ElectronBridge } from "../shared/ipc/bridge-types";
+import { INVOKE_CHANNELS, OBSERVE_CHANNELS } from "../shared/ipc/api";
 
-contextBridge.exposeInMainWorld("electronAPI", {
-  // ── Panel management ──────────────────────────────────────────────────────
+const bridge: ElectronBridge = {
+  invoke(channel, input) {
+    if (!INVOKE_CHANNELS.has(channel)) {
+      return Promise.resolve({
+        ok: false,
+        error: {
+          code: "UNKNOWN_CHANNEL",
+          channel,
+          message: `Unknown channel: ${channel}`,
+        },
+      });
+    }
+    return ipcRenderer.invoke(channel, input);
+  },
 
-  listPanels: (): Promise<PanelInfo[]> =>
-    ipcRenderer.invoke(IPC_CHANNELS.PANEL_LIST),
-
-  createPanel: (url: string): Promise<PanelInfo> =>
-    ipcRenderer.invoke(IPC_CHANNELS.PANEL_CREATE, url),
-
-  removePanel: (panelId: string): Promise<PanelInfo[]> =>
-    ipcRenderer.invoke(IPC_CHANNELS.PANEL_REMOVE, panelId),
-
-  togglePanel: (panelId: string): Promise<PanelInfo[]> =>
-    ipcRenderer.invoke(IPC_CHANNELS.PANEL_TOGGLE, panelId),
-
-  navigatePanel: (panelId: string, url: string): Promise<void> =>
-    ipcRenderer.invoke(IPC_CHANNELS.PANEL_NAVIGATE, panelId, url),
-
-  getPanelUrl: (panelId: string): Promise<string> =>
-    ipcRenderer.invoke(IPC_CHANNELS.PANEL_GET_URL, panelId),
-
-  onPanelListUpdated: (cb: (panels: PanelInfo[]) => void): (() => void) => {
-    const handler = (
+  on(channel, handler) {
+    if (!OBSERVE_CHANNELS.has(channel)) return () => {};
+    const listener = (
       _e: Electron.IpcRendererEvent,
-      panels: PanelInfo[],
+      payload: unknown,
     ): void => {
-      cb(panels);
+      handler(payload);
     };
-    ipcRenderer.on(IPC_CHANNELS.PANEL_LIST_UPDATED, handler);
-    return () =>
-      ipcRenderer.removeListener(IPC_CHANNELS.PANEL_LIST_UPDATED, handler);
+    ipcRenderer.on(channel, listener);
+    return () => ipcRenderer.removeListener(channel, listener);
   },
+};
 
-  onPanelUrlChanged: (
-    cb: (panelId: string, url: string) => void,
-  ): (() => void) => {
-    const handler = (
-      _e: Electron.IpcRendererEvent,
-      panelId: string,
-      url: string,
-    ): void => {
-      cb(panelId, url);
-    };
-    ipcRenderer.on(IPC_CHANNELS.PANEL_URL_CHANGED, handler);
-    return () =>
-      ipcRenderer.removeListener(IPC_CHANNELS.PANEL_URL_CHANGED, handler);
-  },
-
-  // ── Roll20 ────────────────────────────────────────────────────────────────
-
-  navigateRoll20: (url: string): Promise<void> =>
-    ipcRenderer.invoke(IPC_CHANNELS.ROLL20_NAVIGATE, url),
-
-  getRoll20Url: (): Promise<string> =>
-    ipcRenderer.invoke(IPC_CHANNELS.ROLL20_GET_URL),
-
-  onRoll20UrlChanged: (cb: (url: string) => void): (() => void) => {
-    const handler = (_e: Electron.IpcRendererEvent, url: string): void => {
-      cb(url);
-    };
-    ipcRenderer.on(IPC_CHANNELS.ROLL20_URL_CHANGED, handler);
-    return () =>
-      ipcRenderer.removeListener(IPC_CHANNELS.ROLL20_URL_CHANGED, handler);
-  },
-
-  // ── Window controls ───────────────────────────────────────────────────────
-
-  minimizeWindow: (): Promise<void> =>
-    ipcRenderer.invoke(IPC_CHANNELS.WINDOW_MINIMIZE),
-  maximizeWindow: (): Promise<void> =>
-    ipcRenderer.invoke(IPC_CHANNELS.WINDOW_MAXIMIZE),
-  closeWindow: (): Promise<void> =>
-    ipcRenderer.invoke(IPC_CHANNELS.WINDOW_CLOSE),
-
-  // ── Beyond20 ─────────────────────────────────────────────────────────────
-
-  getBeyond20Status: (): Promise<Beyond20Status> =>
-    ipcRenderer.invoke(IPC_CHANNELS.BEYOND20_STATUS),
-
-  onBeyond20Update: (cb: (status: Beyond20Status) => void): (() => void) => {
-    const handler = (
-      _e: Electron.IpcRendererEvent,
-      status: Beyond20Status,
-    ): void => {
-      cb(status);
-    };
-    ipcRenderer.on(IPC_CHANNELS.BEYOND20_UPDATE, handler);
-    return () =>
-      ipcRenderer.removeListener(IPC_CHANNELS.BEYOND20_UPDATE, handler);
-  },
-});
+contextBridge.exposeInMainWorld("__bridge", bridge);
