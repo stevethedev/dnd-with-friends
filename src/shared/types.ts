@@ -14,16 +14,22 @@ export interface Beyond20Status {
   error?: string
 }
 
+/** Persisted panel configuration saved to the store. */
 export interface PanelConfig {
   id: string
   url: string
   width: number
 }
 
+/**
+ * Serialisable panel descriptor sent to the renderer via IPC.
+ * Does not contain any Electron objects; safe to cross the context bridge.
+ */
 export interface PanelInfo {
   id: string
   title: string
   url: string
+  /** Derived at query time: true when this panel is the current activePanelId. */
   isOpen: boolean
   width: number
 }

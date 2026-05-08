@@ -2,11 +2,26 @@ import { BrowserWindow, WebContentsView, session, shell } from 'electron'
 import { join } from 'path'
 import { store } from './store'
 import { IPC_CHANNELS } from '../shared/ipcChannels'
-import { TOOLBAR_HEIGHT, RESIZE_HANDLE_WIDTH } from '../shared/constants'
+import {
+  TOOLBAR_HEIGHT,
+  RESIZE_HANDLE_WIDTH,
+  MIN_PANEL_WIDTH,
+  MAX_PANEL_WIDTH_FRACTION,
+  PANEL_OFFSCREEN_MARGIN,
+  WINDOW_DEFAULT_WIDTH,
+  WINDOW_DEFAULT_HEIGHT,
+  MIN_WINDOW_WIDTH,
+  MIN_WINDOW_HEIGHT
+} from '../shared/constants'
 import type { PanelConfig, PanelInfo } from '../shared/types'
 
 // ─── Internal state ──────────────────────────────────────────────────────────
 
+/**
+ * Internal runtime state for a panel — lives in the main process only.
+ * Contains the live WebContentsView alongside config/display data.
+ * See PanelInfo (shared/types.ts) for the serialisable form sent to the renderer.
+ */
 interface PanelState {
   id: string
   view: WebContentsView
@@ -16,6 +31,11 @@ interface PanelState {
 }
 
 const panelMap = new Map<string, PanelState>()
+
+/**
+ * ID of the currently open (animated into view) panel, or null when all panels
+ * are closed. Only one panel can be active at a time; others are hidden off-screen.
+ */
 let activePanelId: string | null = null
 let resizeHandleView: WebContentsView | null = null
 let mainWindow: BrowserWindow | null = null
@@ -24,8 +44,18 @@ let animationTimer: ReturnType<typeof setInterval> | null = null
 
 const ANIM_DURATION_MS = 220
 const ANIM_FPS = 60
-const MIN_PANEL_WIDTH = 320
-const MAX_PANEL_WIDTH_FRACTION = 0.80
+
+// ─── Layout helpers ───────────────────────────────────────────────────────────
+
+/** Clamp rawWidth to [MIN_PANEL_WIDTH, 80% of window width]. */
+function constrainPanelWidth(rawWidth: number, winWidth: number): number {
+  return Math.max(MIN_PANEL_WIDTH, Math.min(rawWidth, Math.floor(winWidth * MAX_PANEL_WIDTH_FRACTION)))
+}
+
+/** Height of the area below the toolbar. */
+function contentHeight(winHeight: number): number {
+  return Math.max(0, winHeight - TOOLBAR_HEIGHT)
+}
 
 // ─── Public accessors ─────────────────────────────────────────────────────────
 
@@ -76,7 +106,7 @@ export function addPanel(config: PanelConfig): PanelInfo {
   }
 
   hidePanel(state)
-  persistPanels()
+  savePanelConfigs()
   return panelStateToInfo(state)
 }
 
@@ -91,7 +121,7 @@ export function removePanel(id: string): void {
     mainWindow.contentView.removeChildView(state.view)
   }
   state.view.webContents.close()
-  persistPanels()
+  savePanelConfigs()
 }
 
 export function togglePanel(id: string): PanelInfo[] {
@@ -130,12 +160,9 @@ export function updatePanelWidth(id: string, rawWidth: number): void {
   if (!state || activePanelId !== id) return
 
   const [winWidth, winHeight] = mainWindow.getContentSize()
-  const maxW = Math.floor(winWidth * MAX_PANEL_WIDTH_FRACTION)
-  const w = Math.max(MIN_PANEL_WIDTH, Math.min(rawWidth, maxW))
+  const w = constrainPanelWidth(rawWidth, winWidth)
   state.width = w
-
-  const panelH = Math.max(0, winHeight - TOOLBAR_HEIGHT)
-  state.view.setBounds({ x: 0, y: TOOLBAR_HEIGHT, width: w, height: panelH })
+  state.view.setBounds({ x: 0, y: TOOLBAR_HEIGHT, width: w, height: contentHeight(winHeight) })
 }
 
 /** Expand the resize handle view to full window width so mousemove covers everything. */
@@ -146,7 +173,7 @@ export function startPanelDrag(id: string): void {
     x: 0,
     y: TOOLBAR_HEIGHT,
     width: winWidth,
-    height: Math.max(0, winHeight - TOOLBAR_HEIGHT)
+    height: contentHeight(winHeight)
   })
 }
 
@@ -157,11 +184,10 @@ export function endPanelDrag(id: string, rawWidth: number): void {
   if (!state) return
 
   const [winWidth, winHeight] = mainWindow.getContentSize()
-  const maxW = Math.floor(winWidth * MAX_PANEL_WIDTH_FRACTION)
-  const w = Math.max(MIN_PANEL_WIDTH, Math.min(rawWidth, maxW))
+  const w = constrainPanelWidth(rawWidth, winWidth)
   state.width = w
 
-  const panelH = Math.max(0, winHeight - TOOLBAR_HEIGHT)
+  const panelH = contentHeight(winHeight)
 
   if (activePanelId === id) {
     state.view.setBounds({ x: 0, y: TOOLBAR_HEIGHT, width: w, height: panelH })
@@ -170,7 +196,7 @@ export function endPanelDrag(id: string, rawWidth: number): void {
     resizeHandleView?.webContents.send(IPC_CHANNELS.RESIZE_HANDLE_INIT, id, w)
   }
 
-  persistPanels()
+  savePanelConfigs()
   sendPanelListUpdate()
 }
 
@@ -178,10 +204,10 @@ export function endPanelDrag(id: string, rawWidth: number): void {
 
 export function createWindowWithPanels(): BrowserWindow {
   const win = new BrowserWindow({
-    width: 1600,
-    height: 900,
-    minWidth: 900,
-    minHeight: 600,
+    width: WINDOW_DEFAULT_WIDTH,
+    height: WINDOW_DEFAULT_HEIGHT,
+    minWidth: MIN_WINDOW_WIDTH,
+    minHeight: MIN_WINDOW_HEIGHT,
     frame: false,
     backgroundColor: '#1a1a2e',
     titleBarStyle: 'hidden',
@@ -193,95 +219,22 @@ export function createWindowWithPanels(): BrowserWindow {
     }
   })
 
-  // Roll20 fills the full window below the toolbar (bottom-most layer)
-  const r20 = new WebContentsView({
-    webPreferences: {
-      session: session.defaultSession,
-      nodeIntegration: false,
-      contextIsolation: true
-    }
-  })
-
-  // Resize handle — added last so it's always above all panel views
-  const resizeHandle = new WebContentsView({
-    webPreferences: {
-      preload: join(__dirname, '../preload/resize-handle.js'),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: false
-    }
-  })
-  // Transparent background so the expanded drag-capture view doesn't cover the underlying
-  // panel and Roll20 WebContentsViews when the user is mid-drag.
-  resizeHandle.setBackgroundColor('rgba(0, 0, 0, 0.001)')
-
-  win.contentView.addChildView(r20)
-  // Panel views will be inserted between r20 and resizeHandle as they're created
-
   mainWindow = win
-  roll20View = r20
-  resizeHandleView = resizeHandle
 
-  // Set up Roll20
-  r20.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url)
-    return { action: 'deny' }
-  })
-  r20.webContents.on('did-navigate', (_e, url) => {
-    store.set('lastRoll20Url', url)
-    win.webContents.send(IPC_CHANNELS.ROLL20_URL_CHANGED, url)
-  })
-  r20.webContents.on('did-navigate-in-page', (_e, url) => {
-    store.set('lastRoll20Url', url)
-    win.webContents.send(IPC_CHANNELS.ROLL20_URL_CHANGED, url)
-  })
-  r20.webContents.loadURL(store.get('lastRoll20Url'))
+  // Z-order: Roll20 (bottom) → panel views (middle) → resize handle (top)
+  roll20View = createRoll20View(win)
+  win.contentView.addChildView(roll20View)
 
-  // Load saved panels
-  const savedPanels = store.get('panels')
-  for (const config of savedPanels) {
-    const view = createPanelView(config.id, config.url)
-    const state: PanelState = {
-      id: config.id,
-      view,
-      title: config.url,
-      url: config.url,
-      width: config.width
-    }
-    panelMap.set(config.id, state)
-    win.contentView.addChildView(view)
-    hidePanel(state)
-  }
+  // Panel views will be inserted between roll20View and resizeHandleView as they're created
+  loadPersistedPanels(win)
 
-  // Resize handle added LAST — always highest z-order (above all panels + Roll20)
-  win.contentView.addChildView(resizeHandle)
-  const resizeHandlePath = join(__dirname, '../renderer/resize-handle.html')
-  console.log('[ResizeHandle] Loading from:', resizeHandlePath)
-  resizeHandle.webContents.loadFile(resizeHandlePath)
-  resizeHandle.webContents.on('did-finish-load', () => console.log('[ResizeHandle] Loaded'))
-  resizeHandle.webContents.on('did-fail-load', (_e, code, desc, url) =>
-    console.error('[ResizeHandle] Failed to load:', url, code, desc)
-  )
+  resizeHandleView = createResizeHandleView()
+  win.contentView.addChildView(resizeHandleView)
   hideResizeHandle()
 
+  setupRendererDiagnostics(win)
   layoutRoll20()
   win.on('resize', onWindowResize)
-
-  // Renderer diagnostics
-  win.webContents.on('console-message', (_e, level, message, line, sourceId) => {
-    const tag = ['verbose', 'info', 'warn', 'error'][level] ?? 'log'
-    console.log(`[Renderer:${tag}] ${message} (${sourceId}:${line})`)
-  })
-  win.webContents.on('render-process-gone', (_e, details) => {
-    console.error('[Renderer] Process gone:', details.reason, details.exitCode)
-  })
-  win.webContents.on('did-fail-load', (_e, errorCode, errorDescription, validatedURL) => {
-    console.error('[Renderer] Failed to load:', validatedURL, errorCode, errorDescription)
-  })
-  win.webContents.on('did-finish-load', () => {
-    console.log('[Renderer] Loaded successfully')
-  })
-
   win.loadFile(join(__dirname, '../renderer/index.html'))
 
   win.on('closed', () => {
@@ -299,6 +252,97 @@ export function createWindowWithPanels(): BrowserWindow {
   return win
 }
 
+// ─── Private: window-creation helpers ────────────────────────────────────────
+
+/** Create and configure the Roll20 WebContentsView. */
+function createRoll20View(win: BrowserWindow): WebContentsView {
+  const view = new WebContentsView({
+    webPreferences: {
+      session: session.defaultSession,
+      nodeIntegration: false,
+      contextIsolation: true
+    }
+  })
+
+  // Redirect popup clicks to system browser instead of opening new Electron windows
+  view.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url)
+    return { action: 'deny' }
+  })
+
+  view.webContents.on('did-navigate', (_e, url) => {
+    store.set('lastRoll20Url', url)
+    win.webContents.send(IPC_CHANNELS.ROLL20_URL_CHANGED, url)
+  })
+  view.webContents.on('did-navigate-in-page', (_e, url) => {
+    store.set('lastRoll20Url', url)
+    win.webContents.send(IPC_CHANNELS.ROLL20_URL_CHANGED, url)
+  })
+
+  view.webContents.loadURL(store.get('lastRoll20Url'))
+  return view
+}
+
+/** Create, configure, and load the resize-handle WebContentsView. */
+function createResizeHandleView(): WebContentsView {
+  const view = new WebContentsView({
+    webPreferences: {
+      preload: join(__dirname, '../preload/resize-handle.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false
+    }
+  })
+
+  // Near-zero opacity prevents the expanded drag-capture view from showing as
+  // a white overlay while the user is mid-drag (Electron's default is opaque white)
+  view.setBackgroundColor('rgba(0, 0, 0, 0.001)')
+
+  const resizeHandlePath = join(__dirname, '../renderer/resize-handle.html')
+  console.log('[ResizeHandle] Loading from:', resizeHandlePath)
+  view.webContents.loadFile(resizeHandlePath)
+  view.webContents.on('did-finish-load', () => console.log('[ResizeHandle] Loaded'))
+  view.webContents.on('did-fail-load', (_e, code, desc, url) =>
+    console.error('[ResizeHandle] Failed to load:', url, code, desc)
+  )
+
+  return view
+}
+
+/** Read saved panel configs from the store, create views, and add them to the window. */
+function loadPersistedPanels(win: BrowserWindow): void {
+  for (const config of store.get('panels')) {
+    const view = createPanelView(config.id, config.url)
+    const state: PanelState = {
+      id: config.id,
+      view,
+      title: config.url,
+      url: config.url,
+      width: config.width
+    }
+    panelMap.set(config.id, state)
+    win.contentView.addChildView(view)
+    hidePanel(state)
+  }
+}
+
+/** Wire up renderer console/crash logging on the BrowserWindow's own webContents. */
+function setupRendererDiagnostics(win: BrowserWindow): void {
+  win.webContents.on('console-message', (_e, level, message, line, sourceId) => {
+    const tag = ['verbose', 'info', 'warn', 'error'][level] ?? 'log'
+    console.log(`[Renderer:${tag}] ${message} (${sourceId}:${line})`)
+  })
+  win.webContents.on('render-process-gone', (_e, details) => {
+    console.error('[Renderer] Process gone:', details.reason, details.exitCode)
+  })
+  win.webContents.on('did-fail-load', (_e, errorCode, errorDescription, validatedURL) => {
+    console.error('[Renderer] Failed to load:', validatedURL, errorCode, errorDescription)
+  })
+  win.webContents.on('did-finish-load', () => {
+    console.log('[Renderer] Loaded successfully')
+  })
+}
+
 // ─── Private helpers ──────────────────────────────────────────────────────────
 
 function createPanelView(id: string, url: string): WebContentsView {
@@ -310,6 +354,7 @@ function createPanelView(id: string, url: string): WebContentsView {
     }
   })
 
+  // Redirect popup clicks to system browser instead of opening new Electron windows
   view.webContents.setWindowOpenHandler(({ url: u }) => {
     shell.openExternal(u)
     return { action: 'deny' }
@@ -318,7 +363,7 @@ function createPanelView(id: string, url: string): WebContentsView {
   view.webContents.on('did-navigate', (_e, newUrl) => {
     const state = panelMap.get(id)
     if (state) state.url = newUrl
-    persistPanels()
+    savePanelConfigs()
     mainWindow?.webContents.send(IPC_CHANNELS.PANEL_URL_CHANGED, id, newUrl)
     sendPanelListUpdate()
   })
@@ -332,7 +377,6 @@ function createPanelView(id: string, url: string): WebContentsView {
   view.webContents.on('page-title-updated', (_e, title) => {
     const state = panelMap.get(id)
     if (state) state.title = title
-    mainWindow?.webContents.send(IPC_CHANNELS.PANEL_TITLE_UPDATED, id, title)
     sendPanelListUpdate()
   })
 
@@ -351,7 +395,12 @@ function panelStateToInfo(state: PanelState): PanelInfo {
 }
 
 function hidePanel(state: PanelState): void {
-  state.view.setBounds({ x: -(state.width + 20), y: TOOLBAR_HEIGHT, width: state.width, height: 0 })
+  state.view.setBounds({
+    x: -(state.width + PANEL_OFFSCREEN_MARGIN),
+    y: TOOLBAR_HEIGHT,
+    width: state.width,
+    height: 0
+  })
 }
 
 function closeActivePanel(): void {
@@ -366,9 +415,8 @@ function animatePanel(id: string, open: boolean): void {
   if (!mainWindow || !state) return
 
   const [winWidth, winHeight] = mainWindow.getContentSize()
-  const maxW = Math.floor(winWidth * MAX_PANEL_WIDTH_FRACTION)
-  const panelW = Math.max(MIN_PANEL_WIDTH, Math.min(state.width, maxW))
-  const panelH = Math.max(0, winHeight - TOOLBAR_HEIGHT)
+  const panelW = constrainPanelWidth(state.width, winWidth)
+  const panelH = contentHeight(winHeight)
 
   const startX = open ? -panelW : 0
   const endX = open ? 0 : -panelW
@@ -420,9 +468,9 @@ function animatePanel(id: string, open: boolean): void {
   }, Math.round(1000 / ANIM_FPS))
 }
 
-function repositionResizeHandle(panelRightEdge: number, panelH: number): void {
+function repositionResizeHandle(panelRightX: number, panelH: number): void {
   resizeHandleView?.setBounds({
-    x: panelRightEdge,
+    x: panelRightX,
     y: TOOLBAR_HEIGHT,
     width: RESIZE_HANDLE_WIDTH,
     height: panelH
@@ -439,8 +487,7 @@ function hideResizeHandle(): void {
 function layoutRoll20(): void {
   if (!mainWindow || !roll20View) return
   const [width, height] = mainWindow.getContentSize()
-  const panelH = Math.max(0, height - TOOLBAR_HEIGHT)
-  roll20View.setBounds({ x: 0, y: TOOLBAR_HEIGHT, width, height: panelH })
+  roll20View.setBounds({ x: 0, y: TOOLBAR_HEIGHT, width, height: contentHeight(height) })
 }
 
 function onWindowResize(): void {
@@ -451,16 +498,16 @@ function onWindowResize(): void {
     const state = panelMap.get(activePanelId)
     if (state) {
       const [winWidth, winHeight] = mainWindow.getContentSize()
-      const maxW = Math.floor(winWidth * MAX_PANEL_WIDTH_FRACTION)
-      const w = Math.max(MIN_PANEL_WIDTH, Math.min(state.width, maxW))
-      const panelH = Math.max(0, winHeight - TOOLBAR_HEIGHT)
+      const w = constrainPanelWidth(state.width, winWidth)
+      const panelH = contentHeight(winHeight)
       state.view.setBounds({ x: 0, y: TOOLBAR_HEIGHT, width: w, height: panelH })
       repositionResizeHandle(w, panelH)
     }
   }
 }
 
-function persistPanels(): void {
+/** Write panel id/url/width metadata to the store so they survive app restarts. */
+function savePanelConfigs(): void {
   const configs = Array.from(panelMap.values()).map((p) => ({
     id: p.id,
     url: p.url,

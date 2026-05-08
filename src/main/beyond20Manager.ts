@@ -74,22 +74,15 @@ export async function ensureLatestBeyond20(): Promise<string | null> {
     return extensionDir
   }
 
-  // Find the chrome extension zip in the release assets
-  const chromeAsset = release.assets.find(
-    (a: GitHubAsset) => a.name.toLowerCase().includes('chrome') && a.name.endsWith('.zip')
-  )
-  if (!chromeAsset) {
-    // Fall back to source zip if no chrome-specific asset exists
-    const sourceAsset = release.assets.find((a: GitHubAsset) => a.name.endsWith('.zip'))
-    if (!sourceAsset) {
-      setStatus({ status: 'error', error: 'No zip asset found in Beyond20 release' })
-      return null
-    }
+  // Prefer the chrome-specific zip; fall back to any zip in the release assets
+  const assetToDownload =
+    release.assets.find(
+      (a: GitHubAsset) => a.name.toLowerCase().includes('chrome') && a.name.endsWith('.zip')
+    ) ?? release.assets.find((a: GitHubAsset) => a.name.endsWith('.zip'))
+  if (!assetToDownload) {
+    setStatus({ status: 'error', error: 'No zip asset found in Beyond20 release' })
+    return null
   }
-
-  const assetToDownload = (release.assets.find(
-    (a: GitHubAsset) => a.name.toLowerCase().includes('chrome') && a.name.endsWith('.zip')
-  ) ?? release.assets.find((a: GitHubAsset) => a.name.endsWith('.zip')))!
 
   console.log('[Beyond20] Downloading', assetToDownload.name, 'tag', latestTag)
   setStatus({ status: 'downloading', version: latestTag })
@@ -163,7 +156,7 @@ async function patchManifest(extensionDir: string): Promise<void> {
     dirty = true
   }
 
-  // 4. Merge host_permissions / optional_host_permissions into permissions (MV3 → MV2)
+  // 3. Merge host_permissions / optional_host_permissions into permissions (MV3 → MV2)
   const existingPerms = Array.isArray(manifest.permissions)
     ? (manifest.permissions as string[])
     : []
@@ -186,7 +179,7 @@ async function patchManifest(extensionDir: string): Promise<void> {
     }
   }
 
-  // 3. Flatten MV3 web_accessible_resources [{resources:[...], matches:[...]}]
+  // 4. Flatten MV3 web_accessible_resources [{resources:[...], matches:[...]}]
   //    → MV2 flat string array
   if (Array.isArray(manifest.web_accessible_resources)) {
     const war = manifest.web_accessible_resources as Array<unknown>

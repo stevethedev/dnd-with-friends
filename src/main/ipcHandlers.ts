@@ -15,6 +15,7 @@ import {
 } from './windowManager'
 import { getBeyond20Status } from './beyond20Manager'
 import { store } from './store'
+import { DEFAULT_PANEL_WIDTH } from '../shared/constants'
 
 /** Allow only http/https URLs to prevent navigation to file:// or javascript: */
 function sanitizeUrl(url: string): string {
@@ -42,7 +43,7 @@ export function registerIpcHandlers(): void {
     const safeUrl = sanitizeUrl(url)
     const id = `panel-${nextIdCounter++}`
     store.set('nextPanelId', nextIdCounter)
-    return addPanel({ id, url: safeUrl, width: 520 })
+    return addPanel({ id, url: safeUrl, width: DEFAULT_PANEL_WIDTH })
   })
 
   ipcMain.handle(IPC_CHANNELS.PANEL_REMOVE, (_event, panelId: string) => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, KeyboardEvent } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useRoll20Navigation } from '../hooks/useWebViewNavigation'
 
 export function Roll20Panel(): React.JSX.Element {
@@ -13,10 +13,6 @@ export function Roll20Panel(): React.JSX.Element {
     navigate(inputValue)
   }
 
-  function handleKeyDown(e: KeyboardEvent<HTMLInputElement>): void {
-    if (e.key === 'Enter') handleGo()
-  }
-
   return (
     <div className="toolbar__panel toolbar__panel--right">
       <span className="toolbar__panel-label">Roll20</span>
@@ -25,7 +21,7 @@ export function Roll20Panel(): React.JSX.Element {
         type="text"
         value={inputValue}
         onChange={(e) => setInputValue(e.target.value)}
-        onKeyDown={handleKeyDown}
+        onKeyDown={(e) => { if (e.key === 'Enter') handleGo() }}
         placeholder="https://app.roll20.net/editor/..."
         aria-label="Roll20 URL"
         spellCheck={false}

@@ -15,7 +15,6 @@ export const IPC_CHANNELS = {
   // Main → renderer push events
   PANEL_LIST_UPDATED: 'panel:list-updated',   // PanelInfo[]
   PANEL_URL_CHANGED: 'panel:url-changed',     // (panelId, url)
-  PANEL_TITLE_UPDATED: 'panel:title-updated', // (panelId, title)
 
   // Resize handle (fire-and-forget, resize-handle renderer → main)
   PANEL_RESIZE: 'panel:resize',           // (panelId, newWidth) — live feedback during drag

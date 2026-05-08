@@ -33,7 +33,7 @@ export function Beyond20Status(): React.JSX.Element {
       : label
 
   return (
-    <div className="toolbar__b20" title={title} aria-label={title}>
+    <div className="toolbar__b20" role="status" title={title} aria-label={title}>
       <span className={`toolbar__b20-dot toolbar__b20-dot--${status}`} />
       <span className="toolbar__b20-label">{label}</span>
     </div>

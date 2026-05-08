@@ -1,4 +1,4 @@
-import React, { useState, useEffect, KeyboardEvent } from 'react'
+import React, { useState, useEffect } from 'react'
 import { WindowControls } from './WindowControls'
 import { Beyond20Status } from './Beyond20Status'
 import { Roll20Panel } from './Roll20Panel'
@@ -38,10 +38,6 @@ export function Toolbar(): React.JSX.Element {
     navigatePanel(activePanel.id, urlInput.trim())
   }
 
-  function handleKeyDown(e: KeyboardEvent<HTMLInputElement>): void {
-    if (e.key === 'Enter') handleGo()
-  }
-
   return (
     <div className="toolbar">
       <WindowControls />
@@ -74,7 +70,7 @@ export function Toolbar(): React.JSX.Element {
             type="text"
             value={urlInput}
             onChange={(e) => setUrlInput(e.target.value)}
-            onKeyDown={handleKeyDown}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleGo() }}
             placeholder="https://..."
             aria-label={`URL for ${activePanel.title}`}
             spellCheck={false}
