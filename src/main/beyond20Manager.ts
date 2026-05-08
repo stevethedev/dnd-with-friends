@@ -1,27 +1,33 @@
-import { app } from 'electron'
-import { join } from 'path'
-import { promises as fs } from 'fs'
-import type { Beyond20Status, GitHubAsset, GitHubRelease } from '../shared/types'
-import { BEYOND20_GITHUB_API } from '../shared/constants'
+import { app } from "electron";
+import { join } from "path";
+import { promises as fs } from "fs";
+import type {
+  Beyond20Status,
+  GitHubAsset,
+  GitHubRelease,
+} from "../shared/types";
+import { BEYOND20_GITHUB_API } from "../shared/constants";
 
-const CACHE_DIR = 'beyond20'
-const VERSION_FILE = 'version.txt'
-const EXTENSION_DIR = 'extension'
+const CACHE_DIR = "beyond20";
+const VERSION_FILE = "version.txt";
+const EXTENSION_DIR = "extension";
 
-let currentStatus: Beyond20Status = { status: 'idle', version: null }
-let statusListener: ((status: Beyond20Status) => void) | null = null
+let currentStatus: Beyond20Status = { status: "idle", version: null };
+let statusListener: ((status: Beyond20Status) => void) | null = null;
 
-export function onBeyond20StatusChange(fn: (status: Beyond20Status) => void): void {
-  statusListener = fn
+export function onBeyond20StatusChange(
+  fn: (status: Beyond20Status) => void,
+): void {
+  statusListener = fn;
 }
 
 export function getBeyond20Status(): Beyond20Status {
-  return currentStatus
+  return currentStatus;
 }
 
 function setStatus(update: Partial<Beyond20Status>): void {
-  currentStatus = { ...currentStatus, ...update }
-  statusListener?.(currentStatus)
+  currentStatus = { ...currentStatus, ...update };
+  statusListener?.(currentStatus);
 }
 
 /**
@@ -30,96 +36,105 @@ function setStatus(update: Partial<Beyond20Status>): void {
  * Falls back to cached version if GitHub is unreachable.
  */
 export async function ensureLatestBeyond20(): Promise<string | null> {
-  const userDataPath = app.getPath('userData')
-  const cacheDir = join(userDataPath, CACHE_DIR)
-  const versionFile = join(cacheDir, VERSION_FILE)
-  const extensionDir = join(cacheDir, EXTENSION_DIR)
+  const userDataPath = app.getPath("userData");
+  const cacheDir = join(userDataPath, CACHE_DIR);
+  const versionFile = join(cacheDir, VERSION_FILE);
+  const extensionDir = join(cacheDir, EXTENSION_DIR);
 
-  await fs.mkdir(cacheDir, { recursive: true })
+  await fs.mkdir(cacheDir, { recursive: true });
 
-  let cachedTag: string | null = null
+  let cachedTag: string | null = null;
   try {
-    cachedTag = (await fs.readFile(versionFile, 'utf-8')).trim()
+    cachedTag = (await fs.readFile(versionFile, "utf-8")).trim();
   } catch {
     // First run — no cache yet
   }
 
-  setStatus({ status: 'checking' })
+  setStatus({ status: "checking" });
 
-  let release: GitHubRelease | null = null
+  let release: GitHubRelease | null = null;
   try {
     const response = await fetch(BEYOND20_GITHUB_API, {
-      headers: { Accept: 'application/vnd.github+json' }
-    })
-    if (!response.ok) throw new Error(`GitHub API returned HTTP ${response.status}`)
-    release = (await response.json()) as GitHubRelease
+      headers: { Accept: "application/vnd.github+json" },
+    });
+    if (!response.ok)
+      throw new Error(`GitHub API returned HTTP ${response.status}`);
+    release = (await response.json()) as GitHubRelease;
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    console.warn('[Beyond20] GitHub API unavailable:', msg)
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn("[Beyond20] GitHub API unavailable:", msg);
     if (cachedTag) {
-      await patchForElectron(extensionDir)
-      setStatus({ status: 'offline', version: cachedTag })
-      return extensionDir
+      await patchForElectron(extensionDir);
+      setStatus({ status: "offline", version: cachedTag });
+      return extensionDir;
     }
-    setStatus({ status: 'error', error: 'GitHub unreachable and no cached version found' })
-    return null
+    setStatus({
+      status: "error",
+      error: "GitHub unreachable and no cached version found",
+    });
+    return null;
   }
 
-  const latestTag = release.tag_name
+  const latestTag = release.tag_name;
 
   if (cachedTag === latestTag) {
-    console.log('[Beyond20] Already up to date:', latestTag)
-    await patchForElectron(extensionDir)
-    setStatus({ status: 'loaded', version: latestTag })
-    return extensionDir
+    console.log("[Beyond20] Already up to date:", latestTag);
+    await patchForElectron(extensionDir);
+    setStatus({ status: "loaded", version: latestTag });
+    return extensionDir;
   }
 
   // Prefer the chrome-specific zip; fall back to any zip in the release assets
   const assetToDownload =
     release.assets.find(
-      (a: GitHubAsset) => a.name.toLowerCase().includes('chrome') && a.name.endsWith('.zip')
-    ) ?? release.assets.find((a: GitHubAsset) => a.name.endsWith('.zip'))
+      (a: GitHubAsset) =>
+        a.name.toLowerCase().includes("chrome") && a.name.endsWith(".zip"),
+    ) ?? release.assets.find((a: GitHubAsset) => a.name.endsWith(".zip"));
   if (!assetToDownload) {
-    setStatus({ status: 'error', error: 'No zip asset found in Beyond20 release' })
-    return null
+    setStatus({
+      status: "error",
+      error: "No zip asset found in Beyond20 release",
+    });
+    return null;
   }
 
-  console.log('[Beyond20] Downloading', assetToDownload.name, 'tag', latestTag)
-  setStatus({ status: 'downloading', version: latestTag })
+  console.log("[Beyond20] Downloading", assetToDownload.name, "tag", latestTag);
+  setStatus({ status: "downloading", version: latestTag });
 
-  let zipBuffer: Buffer
+  let zipBuffer: Buffer;
   try {
-    const zipResponse = await fetch(assetToDownload.browser_download_url)
-    if (!zipResponse.ok) throw new Error(`Download failed: HTTP ${zipResponse.status}`)
-    zipBuffer = Buffer.from(await zipResponse.arrayBuffer())
+    const zipResponse = await fetch(assetToDownload.browser_download_url);
+    if (!zipResponse.ok)
+      throw new Error(`Download failed: HTTP ${zipResponse.status}`);
+    zipBuffer = Buffer.from(await zipResponse.arrayBuffer());
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
+    const msg = err instanceof Error ? err.message : String(err);
     // Fall back to cache if download fails
     if (cachedTag) {
-      console.warn('[Beyond20] Download failed, using cached version:', msg)
-      await patchForElectron(extensionDir)
-      setStatus({ status: 'offline', version: cachedTag })
-      return extensionDir
+      console.warn("[Beyond20] Download failed, using cached version:", msg);
+      await patchForElectron(extensionDir);
+      setStatus({ status: "offline", version: cachedTag });
+      return extensionDir;
     }
-    setStatus({ status: 'error', error: `Download failed: ${msg}` })
-    return null
+    setStatus({ status: "error", error: `Download failed: ${msg}` });
+    return null;
   }
 
-  setStatus({ status: 'extracting', version: latestTag })
+  setStatus({ status: "extracting", version: latestTag });
 
-  await fs.rm(extensionDir, { recursive: true, force: true })
-  await fs.mkdir(extensionDir, { recursive: true })
+  await fs.rm(extensionDir, { recursive: true, force: true });
+  await fs.mkdir(extensionDir, { recursive: true });
 
-  const AdmZip = (await import('adm-zip')).default
-  const zip = new AdmZip(zipBuffer)
-  zip.extractAllTo(extensionDir, true)
+  const AdmZip = (await import("adm-zip")).default;
+  const zip = new AdmZip(zipBuffer);
+  zip.extractAllTo(extensionDir, true);
 
-  await fs.writeFile(versionFile, latestTag, 'utf-8')
-  console.log('[Beyond20] Updated to', latestTag)
+  await fs.writeFile(versionFile, latestTag, "utf-8");
+  console.log("[Beyond20] Updated to", latestTag);
 
-  await patchForElectron(extensionDir)
-  setStatus({ status: 'loaded', version: latestTag })
-  return extensionDir
+  await patchForElectron(extensionDir);
+  setStatus({ status: "loaded", version: latestTag });
+  return extensionDir;
 }
 
 /**
@@ -129,74 +144,85 @@ export async function ensureLatestBeyond20(): Promise<string | null> {
  *
  * Safe to call repeatedly — patches are idempotent.
  */
-export async function patchForElectron(extensionDir: string): Promise<void> {
-  await patchManifest(extensionDir)
-  await patchBackgroundScript(extensionDir)
+async function patchForElectron(extensionDir: string): Promise<void> {
+  await patchManifest(extensionDir);
+  await patchBackgroundScript(extensionDir);
 }
 
 async function patchManifest(extensionDir: string): Promise<void> {
-  const manifestPath = join(extensionDir, 'manifest.json')
-  const raw = await fs.readFile(manifestPath, 'utf-8')
-  const manifest = JSON.parse(raw) as Record<string, unknown>
-  let dirty = false
+  const manifestPath = join(extensionDir, "manifest.json");
+  const raw = await fs.readFile(manifestPath, "utf-8");
+  const manifest = JSON.parse(raw) as Record<string, unknown>;
+  let dirty = false;
 
   // 1. Convert MV3 service_worker → MV2 background scripts
-  const background = manifest.background as Record<string, unknown> | undefined
+  const background = manifest.background as Record<string, unknown> | undefined;
   if (background?.service_worker) {
-    const serviceWorkerFile = background.service_worker as string
-    manifest.manifest_version = 2
-    manifest.background = { scripts: [serviceWorkerFile], persistent: false }
-    dirty = true
+    const serviceWorkerFile = background.service_worker as string;
+    manifest.manifest_version = 2;
+    manifest.background = { scripts: [serviceWorkerFile], persistent: false };
+    dirty = true;
   }
 
   // 2. MV2 uses browser_action instead of action
   if (manifest.action) {
-    manifest.browser_action = manifest.action
-    delete manifest.action
-    dirty = true
+    manifest.browser_action = manifest.action;
+    delete manifest.action;
+    dirty = true;
   }
 
   // 3. Merge host_permissions / optional_host_permissions into permissions (MV3 → MV2)
   const existingPerms = Array.isArray(manifest.permissions)
     ? (manifest.permissions as string[])
-    : []
+    : [];
   if (Array.isArray(manifest.host_permissions)) {
-    const merged = [...new Set([...existingPerms, ...(manifest.host_permissions as string[])])]
-    manifest.permissions = merged
-    delete manifest.host_permissions
-    dirty = true
+    const merged = [
+      ...new Set([
+        ...existingPerms,
+        ...(manifest.host_permissions as string[]),
+      ]),
+    ];
+    manifest.permissions = merged;
+    delete manifest.host_permissions;
+    dirty = true;
   }
   if (manifest.optional_host_permissions) {
-    delete manifest.optional_host_permissions
-    dirty = true
+    delete manifest.optional_host_permissions;
+    dirty = true;
   }
   // Remove 'scripting' permission — MV3-only API, not valid in MV2
   if (Array.isArray(manifest.permissions)) {
-    const filtered = (manifest.permissions as string[]).filter((p) => p !== 'scripting')
+    const filtered = (manifest.permissions as string[]).filter(
+      (p) => p !== "scripting",
+    );
     if (filtered.length !== (manifest.permissions as string[]).length) {
-      manifest.permissions = filtered
-      dirty = true
+      manifest.permissions = filtered;
+      dirty = true;
     }
   }
 
   // 4. Flatten MV3 web_accessible_resources [{resources:[...], matches:[...]}]
   //    → MV2 flat string array
   if (Array.isArray(manifest.web_accessible_resources)) {
-    const war = manifest.web_accessible_resources as Array<unknown>
-    if (war.length > 0 && typeof war[0] === 'object' && war[0] !== null) {
-      const flat: string[] = []
+    const war = manifest.web_accessible_resources as Array<unknown>;
+    if (war.length > 0 && typeof war[0] === "object" && war[0] !== null) {
+      const flat: string[] = [];
       for (const entry of war) {
-        const e = entry as { resources?: string[] }
-        if (Array.isArray(e.resources)) flat.push(...e.resources)
+        const e = entry as { resources?: string[] };
+        if (Array.isArray(e.resources)) flat.push(...e.resources);
       }
-      manifest.web_accessible_resources = [...new Set(flat)]
-      dirty = true
+      manifest.web_accessible_resources = [...new Set(flat)];
+      dirty = true;
     }
   }
 
   if (dirty) {
-    await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8')
-    console.log('[Beyond20] Patched manifest.json → MV2 compatible')
+    await fs.writeFile(
+      manifestPath,
+      JSON.stringify(manifest, null, 2),
+      "utf-8",
+    );
+    console.log("[Beyond20] Patched manifest.json → MV2 compatible");
   }
 }
 
@@ -204,28 +230,28 @@ async function patchBackgroundScript(extensionDir: string): Promise<void> {
   // Electron doesn't implement chrome.permissions.onAdded / onRemoved.
   // Beyond20's background.js calls .addListener() on these at the top level,
   // crashing the entire background script. We guard them with existence checks.
-  const bgPath = join(extensionDir, 'dist', 'background.js')
-  let src: string
+  const bgPath = join(extensionDir, "dist", "background.js");
+  let src: string;
   try {
-    src = await fs.readFile(bgPath, 'utf-8')
+    src = await fs.readFile(bgPath, "utf-8");
   } catch {
-    return // No background script to patch
+    return; // No background script to patch
   }
 
-  const SENTINEL = '/* electron-patched */'
-  if (src.includes(SENTINEL)) return // Already patched
+  const SENTINEL = "/* electron-patched */";
+  if (src.includes(SENTINEL)) return; // Already patched
 
   // Replace the two problematic lines with null-guarded versions
   const patched = src
     .replace(
       /chromeOrBrowser\.permissions\.onAdded\.addListener\(([^)]+)\)/g,
-      'chromeOrBrowser.permissions.onAdded?.addListener($1)'
+      "chromeOrBrowser.permissions.onAdded?.addListener($1)",
     )
     .replace(
       /chromeOrBrowser\.permissions\.onRemoved\.addListener\(([^)]+)\)/g,
-      'chromeOrBrowser.permissions.onRemoved?.addListener($1)'
-    )
+      "chromeOrBrowser.permissions.onRemoved?.addListener($1)",
+    );
 
-  await fs.writeFile(bgPath, SENTINEL + '\n' + patched, 'utf-8')
-  console.log('[Beyond20] Patched background.js (permissions API stubs)')
+  await fs.writeFile(bgPath, SENTINEL + "\n" + patched, "utf-8");
+  console.log("[Beyond20] Patched background.js (permissions API stubs)");
 }

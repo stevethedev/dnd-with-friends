@@ -1,5 +1,5 @@
-import React from 'react'
-import { Toolbar } from './components/Toolbar'
+import React from "react";
+import { Toolbar } from "./components/Toolbar";
 
 /**
  * The BrowserWindow's webContents renders at full window size.
@@ -8,5 +8,5 @@ import { Toolbar } from './components/Toolbar'
  * pass through to the D&D Beyond / Roll20 WebContentsViews beneath.
  */
 export function App(): React.JSX.Element {
-  return <Toolbar />
+  return <Toolbar />;
 }

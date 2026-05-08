@@ -8,6 +8,14 @@
     "prestart": "npm run build",
     "dev": "electron-vite dev",
     "build": "electron-vite build",
+    "check": "npm-run-all check:*",
+    "check:types": "tsc --noEmit",
+    "check:format": "prettier --check .",
+    "check:lint": "eslint --max-warnings=0 .",
+    "check:deps": "knip",
+    "fix": "npm-run-all fix:*",
+    "fix:format": "prettier --write .",
+    "fix:lint": "eslint --fix .",
     "preview": "electron-vite preview",
     "package": "electron-builder",
     "prepackage": "npm run build",
@@ -26,11 +34,14 @@
   "author": "stevenmjimenez@gmail.com",
   "license": "MIT",
   "dependencies": {
-    "@electron-toolkit/utils": "^4.0.0",
     "adm-zip": "^0.5.16",
     "electron-store": "^8.2.0"
   },
   "devDependencies": {
+    "@eslint/css": "^0.14.1",
+    "@eslint/js": "^9.39.4",
+    "@eslint/json": "^0.14.0",
+    "@eslint/markdown": "^7.5.1",
     "@types/adm-zip": "^0.5.7",
     "@types/node": "^22.0.0",
     "@types/react": "^18.3.0",
@@ -39,10 +50,15 @@
     "electron": "^35.0.0",
     "electron-builder": "^25.0.0",
     "electron-vite": "^3.0.0",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^10.1.8",
+    "knip": "^6.12.1",
     "npm-run-all": "^4.1.5",
+    "prettier": "^3.8.3",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
     "typescript": "^5.6.0",
+    "typescript-eslint": "^8.57.2",
     "vite": "^6.0.0"
   }
 }

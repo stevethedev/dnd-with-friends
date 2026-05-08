@@ -1,8 +1,8 @@
-import { contextBridge, ipcRenderer } from 'electron'
-import { IPC_CHANNELS } from '../shared/ipcChannels'
-import type { Beyond20Status, PanelInfo } from '../shared/types'
+import { contextBridge, ipcRenderer } from "electron";
+import { IPC_CHANNELS } from "../shared/ipcChannels";
+import type { Beyond20Status, PanelInfo } from "../shared/types";
 
-contextBridge.exposeInMainWorld('electronAPI', {
+contextBridge.exposeInMainWorld("electronAPI", {
   // ── Panel management ──────────────────────────────────────────────────────
 
   listPanels: (): Promise<PanelInfo[]> =>
@@ -24,16 +24,30 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke(IPC_CHANNELS.PANEL_GET_URL, panelId),
 
   onPanelListUpdated: (cb: (panels: PanelInfo[]) => void): (() => void) => {
-    const handler = (_e: Electron.IpcRendererEvent, panels: PanelInfo[]): void => cb(panels)
-    ipcRenderer.on(IPC_CHANNELS.PANEL_LIST_UPDATED, handler)
-    return () => ipcRenderer.removeListener(IPC_CHANNELS.PANEL_LIST_UPDATED, handler)
+    const handler = (
+      _e: Electron.IpcRendererEvent,
+      panels: PanelInfo[],
+    ): void => {
+      cb(panels);
+    };
+    ipcRenderer.on(IPC_CHANNELS.PANEL_LIST_UPDATED, handler);
+    return () =>
+      ipcRenderer.removeListener(IPC_CHANNELS.PANEL_LIST_UPDATED, handler);
   },
 
-  onPanelUrlChanged: (cb: (panelId: string, url: string) => void): (() => void) => {
-    const handler = (_e: Electron.IpcRendererEvent, panelId: string, url: string): void =>
-      cb(panelId, url)
-    ipcRenderer.on(IPC_CHANNELS.PANEL_URL_CHANGED, handler)
-    return () => ipcRenderer.removeListener(IPC_CHANNELS.PANEL_URL_CHANGED, handler)
+  onPanelUrlChanged: (
+    cb: (panelId: string, url: string) => void,
+  ): (() => void) => {
+    const handler = (
+      _e: Electron.IpcRendererEvent,
+      panelId: string,
+      url: string,
+    ): void => {
+      cb(panelId, url);
+    };
+    ipcRenderer.on(IPC_CHANNELS.PANEL_URL_CHANGED, handler);
+    return () =>
+      ipcRenderer.removeListener(IPC_CHANNELS.PANEL_URL_CHANGED, handler);
   },
 
   // ── Roll20 ────────────────────────────────────────────────────────────────
@@ -45,16 +59,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke(IPC_CHANNELS.ROLL20_GET_URL),
 
   onRoll20UrlChanged: (cb: (url: string) => void): (() => void) => {
-    const handler = (_e: Electron.IpcRendererEvent, url: string): void => cb(url)
-    ipcRenderer.on(IPC_CHANNELS.ROLL20_URL_CHANGED, handler)
-    return () => ipcRenderer.removeListener(IPC_CHANNELS.ROLL20_URL_CHANGED, handler)
+    const handler = (_e: Electron.IpcRendererEvent, url: string): void => {
+      cb(url);
+    };
+    ipcRenderer.on(IPC_CHANNELS.ROLL20_URL_CHANGED, handler);
+    return () =>
+      ipcRenderer.removeListener(IPC_CHANNELS.ROLL20_URL_CHANGED, handler);
   },
 
   // ── Window controls ───────────────────────────────────────────────────────
 
-  minimizeWindow: (): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.WINDOW_MINIMIZE),
-  maximizeWindow: (): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.WINDOW_MAXIMIZE),
-  closeWindow: (): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.WINDOW_CLOSE),
+  minimizeWindow: (): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.WINDOW_MINIMIZE),
+  maximizeWindow: (): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.WINDOW_MAXIMIZE),
+  closeWindow: (): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.WINDOW_CLOSE),
 
   // ── Beyond20 ─────────────────────────────────────────────────────────────
 
@@ -62,8 +82,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke(IPC_CHANNELS.BEYOND20_STATUS),
 
   onBeyond20Update: (cb: (status: Beyond20Status) => void): (() => void) => {
-    const handler = (_e: Electron.IpcRendererEvent, status: Beyond20Status): void => cb(status)
-    ipcRenderer.on(IPC_CHANNELS.BEYOND20_UPDATE, handler)
-    return () => ipcRenderer.removeListener(IPC_CHANNELS.BEYOND20_UPDATE, handler)
-  }
-})
+    const handler = (
+      _e: Electron.IpcRendererEvent,
+      status: Beyond20Status,
+    ): void => {
+      cb(status);
+    };
+    ipcRenderer.on(IPC_CHANNELS.BEYOND20_UPDATE, handler);
+    return () =>
+      ipcRenderer.removeListener(IPC_CHANNELS.BEYOND20_UPDATE, handler);
+  },
+});

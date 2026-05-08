@@ -33,7 +33,10 @@ body {
   background: #1a1a2e;
   border-bottom: 1px solid #2d2d4e;
   color: #e0e0e0;
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
   font-size: 13px;
   -webkit-app-region: drag;
 }
@@ -61,7 +64,9 @@ body {
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.15s, border-color 0.15s;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
   -webkit-app-region: no-drag;
   max-width: 160px;
 }
@@ -107,7 +112,9 @@ body {
   line-height: 1;
   cursor: pointer;
   -webkit-app-region: no-drag;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 
 .toolbar__panel-remove:hover {
@@ -130,7 +137,9 @@ body {
   line-height: 1;
   cursor: pointer;
   -webkit-app-region: no-drag;
-  transition: background 0.15s, border-color 0.15s;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
 }
 
 .toolbar__add-panel:hover {
@@ -230,18 +239,34 @@ body {
   flex-shrink: 0;
 }
 
-.toolbar__b20-dot--loaded   { background: #22c55e; }
-.toolbar__b20-dot--offline  { background: #f59e0b; }
+.toolbar__b20-dot--loaded {
+  background: #22c55e;
+}
+.toolbar__b20-dot--offline {
+  background: #f59e0b;
+}
 .toolbar__b20-dot--checking,
 .toolbar__b20-dot--downloading,
 .toolbar__b20-dot--extracting,
-.toolbar__b20-dot--loading  { background: #60a5fa; animation: pulse 1s infinite; }
-.toolbar__b20-dot--error    { background: #ef4444; }
-.toolbar__b20-dot--idle     { background: #6b7280; }
+.toolbar__b20-dot--loading {
+  background: #60a5fa;
+  animation: pulse 1s infinite;
+}
+.toolbar__b20-dot--error {
+  background: #ef4444;
+}
+.toolbar__b20-dot--idle {
+  background: #6b7280;
+}
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.4; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
 }
 
 .toolbar__b20-label {
@@ -269,9 +294,15 @@ body {
   padding: 0;
 }
 
-.toolbar__wc-btn--close  { background: #ef4444; }
-.toolbar__wc-btn--min    { background: #f59e0b; }
-.toolbar__wc-btn--max    { background: #22c55e; }
+.toolbar__wc-btn--close {
+  background: #ef4444;
+}
+.toolbar__wc-btn--min {
+  background: #f59e0b;
+}
+.toolbar__wc-btn--max {
+  background: #22c55e;
+}
 
 .toolbar__wc-btn:hover {
   filter: brightness(1.2);

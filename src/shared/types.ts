@@ -1,24 +1,24 @@
-export type Beyond20LoadStatus =
-  | 'idle'
-  | 'checking'
-  | 'downloading'
-  | 'extracting'
-  | 'loading'
-  | 'loaded'
-  | 'offline'
-  | 'error'
+type Beyond20LoadStatus =
+  | "idle"
+  | "checking"
+  | "downloading"
+  | "extracting"
+  | "loading"
+  | "loaded"
+  | "offline"
+  | "error";
 
 export interface Beyond20Status {
-  status: Beyond20LoadStatus
-  version: string | null
-  error?: string
+  status: Beyond20LoadStatus;
+  version: string | null;
+  error?: string;
 }
 
 /** Persisted panel configuration saved to the store. */
 export interface PanelConfig {
-  id: string
-  url: string
-  width: number
+  id: string;
+  url: string;
+  width: number;
 }
 
 /**
@@ -26,27 +26,27 @@ export interface PanelConfig {
  * Does not contain any Electron objects; safe to cross the context bridge.
  */
 export interface PanelInfo {
-  id: string
-  title: string
-  url: string
+  id: string;
+  title: string;
+  url: string;
   /** Derived at query time: true when this panel is the current activePanelId. */
-  isOpen: boolean
-  width: number
+  isOpen: boolean;
+  width: number;
 }
 
 export interface StoreSchema {
-  beyond20Version: string | null
-  lastRoll20Url: string
-  panels: PanelConfig[]
-  nextPanelId: number
+  beyond20Version: string | null;
+  lastRoll20Url: string;
+  panels: PanelConfig[];
+  nextPanelId: number;
 }
 
 export interface GitHubAsset {
-  name: string
-  browser_download_url: string
+  name: string;
+  browser_download_url: string;
 }
 
 export interface GitHubRelease {
-  tag_name: string
-  assets: GitHubAsset[]
+  tag_name: string;
+  assets: GitHubAsset[];
 }
