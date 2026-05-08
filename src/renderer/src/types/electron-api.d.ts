@@ -8,8 +8,6 @@ interface ElectronAPI {
   togglePanel: (panelId: string) => Promise<PanelInfo[]>
   navigatePanel: (panelId: string, url: string) => Promise<void>
   getPanelUrl: (panelId: string) => Promise<string>
-  resizePanel: (panelId: string, newWidth: number) => void
-  resizePanelEnd: (panelId: string, finalWidth: number) => void
   onPanelListUpdated: (cb: (panels: PanelInfo[]) => void) => () => void
   onPanelUrlChanged: (cb: (panelId: string, url: string) => void) => () => void
 
@@ -30,8 +28,9 @@ interface ElectronAPI {
 
 interface ResizeAPI {
   onInit: (cb: (panelId: string, currentWidth: number) => void) => () => void
+  startDrag: (panelId: string) => void
   resize: (panelId: string, newWidth: number) => void
-  resizeEnd: (panelId: string, finalWidth: number) => void
+  endDrag: (panelId: string, finalWidth: number) => void
 }
 
 declare global {

@@ -23,14 +23,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getPanelUrl: (panelId: string): Promise<string> =>
     ipcRenderer.invoke(IPC_CHANNELS.PANEL_GET_URL, panelId),
 
-  /** Fire-and-forget resize during drag — no round-trip overhead. */
-  resizePanel: (panelId: string, newWidth: number): void =>
-    ipcRenderer.send(IPC_CHANNELS.PANEL_RESIZE, panelId, newWidth),
-
-  /** Final resize call on drag end — persisted to store. */
-  resizePanelEnd: (panelId: string, finalWidth: number): void =>
-    ipcRenderer.send(IPC_CHANNELS.PANEL_RESIZE_END, panelId, finalWidth),
-
   onPanelListUpdated: (cb: (panels: PanelInfo[]) => void): (() => void) => {
     const handler = (_e: Electron.IpcRendererEvent, panels: PanelInfo[]): void => cb(panels)
     ipcRenderer.on(IPC_CHANNELS.PANEL_LIST_UPDATED, handler)

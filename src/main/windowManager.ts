@@ -394,6 +394,7 @@ function animatePanel(id: string, open: boolean): void {
 
     const elapsed = Date.now() - startTime
     const t = Math.min(elapsed / ANIM_DURATION_MS, 1)
+    // Cubic ease-in-out: slow start, fast middle, slow end
     const eased = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
     const x = Math.round(startX + (endX - startX) * eased)
 

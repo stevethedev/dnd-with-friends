@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { PanelInfo } from '../../../shared/types'
+import { normalizeUrl } from '../../../shared/utils'
 
 interface PanelControl {
   panels: PanelInfo[]
@@ -33,9 +34,7 @@ export function usePanels(): PanelControl {
   }, [])
 
   const navigatePanel = useCallback((panelId: string, url: string): void => {
-    const normalized =
-      url.startsWith('http://') || url.startsWith('https://') ? url : `https://${url}`
-    window.electronAPI.navigatePanel(panelId, normalized).catch(console.error)
+    window.electronAPI.navigatePanel(panelId, normalizeUrl(url)).catch(console.error)
   }, [])
 
   return { panels, toggle, createPanel, removePanel, navigatePanel }

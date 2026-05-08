@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { normalizeUrl } from '../../../shared/utils'
 
 interface PanelNavigation {
   currentUrl: string
@@ -16,9 +17,7 @@ export function useRoll20Navigation(): PanelNavigation {
 
   const navigate = useCallback((url: string): void => {
     if (!url.trim()) return
-    const normalized =
-      url.startsWith('http://') || url.startsWith('https://') ? url : `https://${url}`
-    window.electronAPI.navigateRoll20(normalized).catch(console.error)
+    window.electronAPI.navigateRoll20(normalizeUrl(url)).catch(console.error)
   }, [])
 
   return { currentUrl, navigate }

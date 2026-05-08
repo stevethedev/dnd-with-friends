@@ -65,6 +65,7 @@
     </div>
   </div>
   <script>
+    var MIN_PANEL_WIDTH = 320; // keep in sync with windowManager.ts
     var panelId = null;
     var panelWidth = 0;
     var isDragging = false;
@@ -97,7 +98,7 @@
     document.addEventListener('mousemove', function(e) {
       if (!isDragging) return;
       var delta = e.screenX - startScreenX;
-      var newWidth = Math.max(320, startWidth + delta);
+      var newWidth = Math.max(MIN_PANEL_WIDTH, startWidth + delta);
       // Keep the visual bar tracking the drag position
       handle.style.left = newWidth + 'px';
       window.resizeAPI.resize(panelId, newWidth);
@@ -110,7 +111,7 @@
       document.body.classList.remove('dragging');
 
       var delta = e.screenX - startScreenX;
-      var newWidth = Math.max(320, startWidth + delta);
+      var newWidth = Math.max(MIN_PANEL_WIDTH, startWidth + delta);
       panelWidth = newWidth;
 
       // Reset handle to fill the (now-shrunk-back) 8px view

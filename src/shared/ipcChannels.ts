@@ -17,9 +17,8 @@ export const IPC_CHANNELS = {
   PANEL_URL_CHANGED: 'panel:url-changed',     // (panelId, url)
   PANEL_TITLE_UPDATED: 'panel:title-updated', // (panelId, title)
 
-  // Resize handle (fire-and-forget, renderer → main)
-  PANEL_RESIZE: 'panel:resize',           // (panelId, newWidth) — ipcMain.on, not handle
-  PANEL_RESIZE_END: 'panel:resize-end',   // (panelId, finalWidth) — persist to store
+  // Resize handle (fire-and-forget, resize-handle renderer → main)
+  PANEL_RESIZE: 'panel:resize',           // (panelId, newWidth) — live feedback during drag
 
   // Resize handle view init (main → resize-handle renderer)
   RESIZE_HANDLE_INIT: 'resize-handle:init', // (panelId, currentWidth)
