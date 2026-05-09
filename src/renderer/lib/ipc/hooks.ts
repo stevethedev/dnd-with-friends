@@ -32,7 +32,8 @@ export function useIpcState<T>(
   subscribeRef.current = subscribe;
 
   useEffect(() => {
-    queryRef.current()
+    queryRef
+      .current()
       .then((r) => {
         if (r.ok) setValue(r.data);
       })

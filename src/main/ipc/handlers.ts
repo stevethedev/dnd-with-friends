@@ -29,7 +29,11 @@ export function createHandlers(): HandlerMap {
       // can never produce a duplicate panel ID on the next launch.
       const counter = store.get("nextPanelId");
       store.set("nextPanelId", counter + 1);
-      return addPanel({ id: `panel-${counter}`, url, width: DEFAULT_PANEL_WIDTH });
+      return addPanel({
+        id: `panel-${counter}`,
+        url,
+        width: DEFAULT_PANEL_WIDTH,
+      });
     },
     "panel.remove": ({ id }: { id: string }): PanelInfo[] => {
       removePanel(id);

@@ -9,7 +9,7 @@ export default defineConfig({
       sourcemap: true,
       rollupOptions: {
         output: {
-          format: "es"
+          format: "es",
         },
         input: {
           index: resolve(__dirname, "src/main/index.ts"),

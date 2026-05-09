@@ -81,7 +81,9 @@ export async function ensureLatestBeyond20(): Promise<string | null> {
       throw new Error(`GitHub API returned HTTP ${response.status}`);
     const parsed = GitHubReleaseSchema.safeParse(await response.json());
     if (!parsed.success)
-      throw new Error(`Unexpected GitHub API response: ${parsed.error.message}`);
+      throw new Error(
+        `Unexpected GitHub API response: ${parsed.error.message}`,
+      );
     release = parsed.data;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -142,7 +144,11 @@ export async function ensureLatestBeyond20(): Promise<string | null> {
       setStatus({ status: "offline", version: cachedTag });
       return extensionDir;
     }
-    setStatus({ status: "error", version: latestTag, error: `Download failed: ${msg}` });
+    setStatus({
+      status: "error",
+      version: latestTag,
+      error: `Download failed: ${msg}`,
+    });
     return null;
   }
 
@@ -206,7 +212,9 @@ async function patchManifest(extensionDir: string): Promise<void> {
   try {
     manifest = JSON.parse(raw) as Record<string, unknown>;
   } catch {
-    console.warn("[Beyond20] manifest.json is malformed; skipping manifest patch");
+    console.warn(
+      "[Beyond20] manifest.json is malformed; skipping manifest patch",
+    );
     return;
   }
   let dirty = false;

@@ -450,8 +450,12 @@ function createPanelView(id: string, url: string): WebContentsView {
     pushEvent(mainWindow, "panel.urlChanged", { id, url: newUrl });
     if (persist) sendPanelListUpdate();
   };
-  view.webContents.on("did-navigate",         (_e, newUrl) => syncPanelUrl(newUrl, true));
-  view.webContents.on("did-navigate-in-page", (_e, newUrl) => syncPanelUrl(newUrl, false));
+  view.webContents.on("did-navigate", (_e, newUrl) =>
+    syncPanelUrl(newUrl, true),
+  );
+  view.webContents.on("did-navigate-in-page", (_e, newUrl) =>
+    syncPanelUrl(newUrl, false),
+  );
 
   view.webContents.on("page-title-updated", (_e, title) => {
     const state = panelMap.get(id);

@@ -18,14 +18,18 @@ const PanelInfoSchema = z.object({
 
 // One variant per status value so z.discriminatedUnion can use O(1) lookup.
 const Beyond20StatusSchema = z.discriminatedUnion("status", [
-  z.object({ status: z.literal("idle"),        version: z.null() }),
-  z.object({ status: z.literal("checking"),    version: z.null() }),
+  z.object({ status: z.literal("idle"), version: z.null() }),
+  z.object({ status: z.literal("checking"), version: z.null() }),
   z.object({ status: z.literal("downloading"), version: z.string() }),
-  z.object({ status: z.literal("extracting"),  version: z.string() }),
-  z.object({ status: z.literal("loading"),     version: z.string() }),
-  z.object({ status: z.literal("loaded"),      version: z.string() }),
-  z.object({ status: z.literal("offline"),     version: z.string() }),
-  z.object({ status: z.literal("error"),       version: z.string().nullable(), error: z.string() }),
+  z.object({ status: z.literal("extracting"), version: z.string() }),
+  z.object({ status: z.literal("loading"), version: z.string() }),
+  z.object({ status: z.literal("loaded"), version: z.string() }),
+  z.object({ status: z.literal("offline"), version: z.string() }),
+  z.object({
+    status: z.literal("error"),
+    version: z.string().nullable(),
+    error: z.string(),
+  }),
 ]);
 
 // Compile-time guard: TypeScript errors here if the Zod schema and the

@@ -32,7 +32,9 @@ export function Toolbar(): React.JSX.Element {
     });
     ipc.panels
       .getUrl({ id: panelId })
-      .then((r) => { if (r.ok) setUrlInput(r.data); })
+      .then((r) => {
+        if (r.ok) setUrlInput(r.data);
+      })
       .catch(console.error);
     return unsub;
   }, [activePanel?.id]);
