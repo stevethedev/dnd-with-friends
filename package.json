@@ -33,6 +33,11 @@
   "keywords": [],
   "author": "stevenmjimenez@gmail.com",
   "license": "MIT",
+  "build": {
+    "publish": {
+      "provider": "github"
+    }
+  },
   "dependencies": {
     "adm-zip": "^0.5.17",
     "electron-store": "^11.0.2",
