@@ -2,6 +2,7 @@
   "name": "dnd-with-friends",
   "version": "0.1.0",
   "description": "Desktop app hosting D&D Beyond and Roll20 with Beyond20 integration",
+  "repository": "https://github.com/stevenmjimenez/dnd-with-friends",
   "main": "./out/main/index.mjs",
   "scripts": {
     "start": "electron .",
@@ -16,6 +17,7 @@
     "fix": "npm-run-all fix:*",
     "fix:format": "prettier --write .",
     "fix:lint": "eslint --fix .",
+    "icons": "icon-gen -i ./resources/icon.png -o ./resources/icons --ico --ico-name=icon --icns --icns-name icon",
     "preview": "electron-vite preview",
     "package": "electron-builder",
     "prepackage": "npm run build",
@@ -36,7 +38,13 @@
   "build": {
     "publish": {
       "provider": "github"
-    }
+    },
+    "directories": {
+      "buildResources": "resources"
+    },
+    "win": { "icon":  "resources/icons/icon.ico" },
+    "mac": { "icon": "resources/icons/icon.icns" },
+    "linux": { "icon": "resources/icon.png" }
   },
   "dependencies": {
     "adm-zip": "^0.5.17",
@@ -58,6 +66,7 @@
     "electron-vite": "^5.0.0",
     "eslint": "^10.3.0",
     "eslint-config-prettier": "^10.1.8",
+    "icon-gen": "^5.0.0",
     "knip": "^6.12.1",
     "npm-run-all": "^4.1.5",
     "prettier": "^3.8.3",
