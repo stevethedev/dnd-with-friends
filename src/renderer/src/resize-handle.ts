@@ -1,4 +1,5 @@
 import { MIN_PANEL_WIDTH } from "../../shared/constants";
+
 let panelId: string | null = null;
 let panelWidth = 0;
 let isDragging = false;

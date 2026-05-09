@@ -1,12 +1,16 @@
-export type Beyond20LoadStatus =
-  | "idle"
-  | "checking"
-  | "downloading"
-  | "extracting"
-  | "loading"
-  | "loaded"
-  | "offline"
-  | "error";
+/** Canonical list of Beyond20 load states — Zod schema in api.ts derives from this. */
+export const BEYOND20_STATUSES = [
+  "idle",
+  "checking",
+  "downloading",
+  "extracting",
+  "loading",
+  "loaded",
+  "offline",
+  "error",
+] as const;
+
+export type Beyond20LoadStatus = (typeof BEYOND20_STATUSES)[number];
 
 export interface Beyond20Status {
   status: Beyond20LoadStatus;

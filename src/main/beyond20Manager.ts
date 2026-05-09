@@ -1,5 +1,5 @@
 import { app } from "electron";
-import { join, resolve } from "path";
+import { join, resolve, relative, isAbsolute } from "path";
 import { promises as fs } from "fs";
 import { z } from "zod";
 import type { Beyond20Status } from "../shared/types";
@@ -150,11 +150,17 @@ export async function ensureLatestBeyond20(): Promise<string | null> {
   const zip = new AdmZip(zipBuffer);
 
   // Zip slip protection: reject any entry whose resolved path escapes extensionDir.
+  // Uses path.relative() rather than string prefix matching to handle platform
+  // path-separator differences (Windows backslash vs Unix forward slash).
   const resolvedRoot = resolve(extensionDir);
   for (const entry of zip.getEntries()) {
     const entryPath = resolve(extensionDir, entry.entryName);
-    if (!entryPath.startsWith(resolvedRoot + "/") && entryPath !== resolvedRoot) {
-      setStatus({ status: "error", error: `Zip entry escapes target directory: ${entry.entryName}` });
+    const rel = relative(resolvedRoot, entryPath);
+    if (rel.startsWith("..") || isAbsolute(rel)) {
+      setStatus({
+        status: "error",
+        error: `Zip entry escapes target directory: ${entry.entryName}`,
+      });
       return null;
     }
   }

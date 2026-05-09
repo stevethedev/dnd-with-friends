@@ -21,14 +21,6 @@ export class IpcError implements SerializedError {
     });
   }
 
-  static serialize(err: unknown, channel: string): SerializedError {
-    return new IpcError({
-      code: "HANDLER_ERROR",
-      channel,
-      message: err instanceof Error ? err.message : String(err),
-    });
-  }
-
   readonly code: string;
   readonly channel: string;
   readonly message: string;

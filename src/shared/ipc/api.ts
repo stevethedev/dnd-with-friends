@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { BEYOND20_STATUSES } from "../types";
 
 // ── Shared sub-schemas ────────────────────────────────────────────────────────
 
@@ -23,16 +24,7 @@ const PanelInfoSchema = z.object({
 });
 
 const Beyond20StatusSchema = z.object({
-  status: z.enum([
-    "idle",
-    "checking",
-    "downloading",
-    "extracting",
-    "loading",
-    "loaded",
-    "offline",
-    "error",
-  ]),
+  status: z.enum(BEYOND20_STATUSES),
   version: z.string().nullable(),
   error: z.string().optional(),
 });
