@@ -1,0 +1,49 @@
+name: Version
+
+on:
+  push:
+    branches: [main]
+
+# Serialise runs so concurrent pushes don't race on the Version PR
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history so changeset can read the log for changelog entries
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - run: npm ci
+
+      # When changeset files exist on main, this opens/updates a "Version Packages" PR
+      # that bumps package.json and writes CHANGELOG.md.  Merging that PR is the release
+      # trigger — the step below then creates the git tag that fires the release workflow.
+      - uses: changesets/action@v1
+        with:
+          version: npm run version
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # After a Version PR merge the package version is new; create the vX.Y.Z tag that
+      # triggers release.yml.  On every other push the tag already exists, so this is a no-op.
+      - name: Tag release
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if git ls-remote --tags origin "refs/tags/v${VERSION}" | grep -q .; then
+            echo "Tag v${VERSION} already exists — skipping"
+          else
+            git tag "v${VERSION}"
+            git push origin "v${VERSION}"
+            echo "Tagged and pushed v${VERSION}"
+          fi
