@@ -20,20 +20,16 @@ import {
 import { getBeyond20Status } from "../beyond20Manager";
 import type { HandlerMap } from "../../shared/ipc/types";
 
-let nextIdCounter = 0;
-
 export function createHandlers(): HandlerMap {
-  nextIdCounter = store.get("nextPanelId");
-
   return {
     "panel.list": (): PanelInfo[] => getPanelInfoList(),
     "panel.create": ({ url }: { url: string }): PanelInfo => {
-      const id = `panel-${nextIdCounter}`;
-      // Persist the incremented counter BEFORE creating the panel so that a
-      // crash between the two writes can never produce a duplicate panel ID on
-      // the next launch (duplicate IDs would throw on startup).
-      store.set("nextPanelId", ++nextIdCounter);
-      return addPanel({ id, url, width: DEFAULT_PANEL_WIDTH });
+      // Read and increment the counter atomically against the store.
+      // Persisting BEFORE addPanel ensures a crash between the two writes
+      // can never produce a duplicate panel ID on the next launch.
+      const counter = store.get("nextPanelId");
+      store.set("nextPanelId", counter + 1);
+      return addPanel({ id: `panel-${counter}`, url, width: DEFAULT_PANEL_WIDTH });
     },
     "panel.remove": ({ id }: { id: string }): PanelInfo[] => {
       removePanel(id);

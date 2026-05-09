@@ -89,6 +89,36 @@ export function getResizeHandleView(): WebContentsView | null {
 // ─── Security helpers ─────────────────────────────────────────────────────────
 
 /**
+ * Returns the shared webPreferences for all content WebContentsViews.
+ * Called as a function (not a module-level constant) because
+ * `session.defaultSession` must be read after `app.ready`.
+ */
+function contentViewWebPrefs(): Electron.WebPreferences {
+  return {
+    session: session.defaultSession,
+    nodeIntegration: false,
+    contextIsolation: true,
+    sandbox: true,
+    webSecurity: true,
+    allowRunningInsecureContent: false,
+  };
+}
+
+/** Block non-http(s) navigations and redirect popup windows to the system browser. */
+function applyContentViewSecurity(view: WebContentsView, label: string): void {
+  view.webContents.on("will-navigate", (event, url) => {
+    if (!isHttpUrl(url)) {
+      console.warn(`[Security] ${label} blocked navigation to:`, url);
+      event.preventDefault();
+    }
+  });
+  view.webContents.setWindowOpenHandler(({ url }) => {
+    safeOpenExternal(url);
+    return { action: "deny" };
+  });
+}
+
+/**
  * Open a URL in the system browser, but only if it is a well-formed http/https URL.
  * Blocks file://, javascript:, custom protocol handlers, and malformed strings.
  */
@@ -312,39 +342,16 @@ export function createWindowWithPanels(): BrowserWindow {
 
 /** Create and configure the Roll20 WebContentsView. */
 function createRoll20View(win: BrowserWindow): WebContentsView {
-  const view = new WebContentsView({
-    webPreferences: {
-      session: session.defaultSession,
-      nodeIntegration: false,
-      contextIsolation: true,
-      sandbox: true,
-      webSecurity: true,
-      allowRunningInsecureContent: false,
-    },
-  });
+  const view = new WebContentsView({ webPreferences: contentViewWebPrefs() });
 
-  // Block navigation to non-http(s) schemes (e.g. file://, javascript:)
-  view.webContents.on("will-navigate", (event, url) => {
-    if (!isHttpUrl(url)) {
-      console.warn("[Security] Roll20 view blocked navigation to:", url);
-      event.preventDefault();
-    }
-  });
+  applyContentViewSecurity(view, "Roll20 view");
 
-  // Redirect popup clicks to system browser; validate URL before opening
-  view.webContents.setWindowOpenHandler(({ url }) => {
-    safeOpenExternal(url);
-    return { action: "deny" };
-  });
-
-  view.webContents.on("did-navigate", (_e, url) => {
+  const handleRoll20Navigation = (_e: unknown, url: string): void => {
     store.set("lastRoll20Url", url);
     pushEvent(win, "roll20.urlChanged", url);
-  });
-  view.webContents.on("did-navigate-in-page", (_e, url) => {
-    store.set("lastRoll20Url", url);
-    pushEvent(win, "roll20.urlChanged", url);
-  });
+  };
+  view.webContents.on("did-navigate", handleRoll20Navigation);
+  view.webContents.on("did-navigate-in-page", handleRoll20Navigation);
 
   const savedUrl = store.get("lastRoll20Url");
   void view.webContents.loadURL(
@@ -436,44 +443,21 @@ function setupRendererDiagnostics(win: BrowserWindow): void {
 // ─── Private helpers ──────────────────────────────────────────────────────────
 
 function createPanelView(id: string, url: string): WebContentsView {
-  const view = new WebContentsView({
-    webPreferences: {
-      session: session.defaultSession,
-      nodeIntegration: false,
-      contextIsolation: true,
-      sandbox: true,
-      webSecurity: true,
-      allowRunningInsecureContent: false,
-    },
-  });
+  const view = new WebContentsView({ webPreferences: contentViewWebPrefs() });
 
-  // Block navigation to non-http(s) schemes (e.g. file://, javascript:)
-  view.webContents.on("will-navigate", (event, navUrl) => {
-    if (!isHttpUrl(navUrl)) {
-      console.warn("[Security] Panel view blocked navigation to:", navUrl);
-      event.preventDefault();
-    }
-  });
+  applyContentViewSecurity(view, `Panel ${id}`);
 
-  // Redirect popup clicks to system browser; validate URL before opening
-  view.webContents.setWindowOpenHandler(({ url: u }) => {
-    safeOpenExternal(u);
-    return { action: "deny" };
-  });
-
-  view.webContents.on("did-navigate", (_e, newUrl) => {
+  // persist=true: full-page navigations update stored URL and panel list
+  // persist=false: in-page navigations (hash/pushState) only update the live URL event
+  const syncPanelUrl = (newUrl: string, persist: boolean): void => {
     const state = panelMap.get(id);
     if (state) state.url = newUrl;
-    savePanelConfigs();
+    if (persist) savePanelConfigs();
     pushEvent(mainWindow, "panel.urlChanged", { id, url: newUrl });
-    sendPanelListUpdate();
-  });
-
-  view.webContents.on("did-navigate-in-page", (_e, newUrl) => {
-    const state = panelMap.get(id);
-    if (state) state.url = newUrl;
-    pushEvent(mainWindow, "panel.urlChanged", { id, url: newUrl });
-  });
+    if (persist) sendPanelListUpdate();
+  };
+  view.webContents.on("did-navigate",         (_e, newUrl) => syncPanelUrl(newUrl, true));
+  view.webContents.on("did-navigate-in-page", (_e, newUrl) => syncPanelUrl(newUrl, false));
 
   view.webContents.on("page-title-updated", (_e, title) => {
     const state = panelMap.get(id);
