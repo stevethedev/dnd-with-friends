@@ -78,7 +78,7 @@ You don't need a changeset on every commit. Push freely; the Version PR accumula
 
 MIT
 
---
+---
 
 [Beyond20]: https://beyond20.here-for-more.info/
 [Changesets]: https://github.com/changesets/changesets
