@@ -21,6 +21,7 @@
     "icons": "icon-gen -i ./resources/icon.png -o ./resources/icons --ico --ico-name=icon --icns --icns-name icon --favicon --favicon-name icon --favicon-png-sizes 16,32,128,256,512,1024",
     "preview": "electron-vite preview",
     "package": "electron-builder",
+    "publish": "npm run package -- --publish always",
     "package:win": "npm run package -- --win",
     "package:mac": "npm run package -- --mac",
     "package:linux": "npm run package --linux",
