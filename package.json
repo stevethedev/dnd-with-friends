@@ -30,7 +30,7 @@
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json",
     "clean": "node -e \"require('fs').rmSync('out', {recursive:true,force:true})\"",
     "changeset": "changeset",
-    "version": "changeset version"
+    "changeset:version": "changeset version"
   },
   "keywords": [],
   "author": "stevenmjimenez@gmail.com",

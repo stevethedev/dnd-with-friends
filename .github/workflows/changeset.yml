@@ -31,7 +31,7 @@ jobs:
       # trigger — the step below then creates the git tag that fires the release workflow.
       - uses: changesets/action@v1
         with:
-          version: npm run version
+          version: npm run changeset:version
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
