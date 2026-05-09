@@ -5,7 +5,7 @@ automatically, handled by the [Beyond20] extension — which the app downloads a
 
 The toolbar across the top controls everything. Roll20 lives in the main view behind it; D&D Beyond (or whatever other
 panels you want to open) slide in as a panel from the left. You can open multiple panels, so if you want to use one for
-your character sheet, one for a spell list, and one for your notes-taking, you can, and it will save your open tabs
+your character sheet, one for a spell list, and one for your note-taking, you can, and it will save your open tabs
 between sessions.
 
 ## Install
