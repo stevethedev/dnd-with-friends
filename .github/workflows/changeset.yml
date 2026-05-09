@@ -35,15 +35,28 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # After a Version PR merge the package version is new; create the vX.Y.Z tag that
-      # triggers release.yml.  On every other push the tag already exists, so this is a no-op.
+      # Create a vX.Y.Z tag only when this commit actually bumped the version field in
+      # package.json — i.e. the merge of a Version Packages PR.  Gating on the diff
+      # prevents a tag (and therefore a release build) from firing on unrelated pushes,
+      # first-run of the workflow, or if a tag was manually deleted.
       - name: Tag release
         run: |
           VERSION=$(node -p "require('./package.json').version")
-          if git ls-remote --tags origin "refs/tags/v${VERSION}" | grep -q .; then
-            echo "Tag v${VERSION} already exists — skipping"
+
+          # Check that this commit changed the "version" line in package.json.
+          # HEAD~1 is the main-branch tip before this push; works for both merge
+          # commits and squash-merges.  Skips gracefully if there is no parent
+          # commit (e.g. initial commit on an empty repo).
+          if git rev-parse HEAD~1 >/dev/null 2>&1 \
+            && git diff HEAD~1 HEAD -- package.json | grep -q '^+  "version"'; then
+
+            if git ls-remote --tags origin "refs/tags/v${VERSION}" | grep -q .; then
+              echo "Tag v${VERSION} already exists — skipping"
+            else
+              git tag "v${VERSION}"
+              git push origin "v${VERSION}"
+              echo "Tagged v${VERSION}"
+            fi
           else
-            git tag "v${VERSION}"
-            git push origin "v${VERSION}"
-            echo "Tagged and pushed v${VERSION}"
+            echo "No version bump in this commit — skipping tag"
           fi
