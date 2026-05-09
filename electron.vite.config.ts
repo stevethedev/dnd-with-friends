@@ -1,13 +1,16 @@
-import { defineConfig, externalizeDepsPlugin } from "electron-vite";
+import { defineConfig } from "electron-vite";
 import react from "@vitejs/plugin-react";
 import { resolve } from "path";
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin()],
     build: {
+      externalizeDeps: true,
       sourcemap: true,
       rollupOptions: {
+        output: {
+          format: "es"
+        },
         input: {
           index: resolve(__dirname, "src/main/index.ts"),
         },
@@ -17,8 +20,10 @@ export default defineConfig({
   preload: {
     // zod must be bundled (not externalized) because sandbox:true preloads
     // cannot require() npm packages at runtime — only Electron built-ins are available.
-    plugins: [externalizeDepsPlugin({ exclude: ["zod"] })],
     build: {
+      externalizeDeps: {
+        exclude: ["zod"],
+      },
       sourcemap: true,
       rollupOptions: {
         input: {
