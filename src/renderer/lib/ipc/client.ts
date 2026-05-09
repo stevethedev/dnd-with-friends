@@ -7,7 +7,7 @@ import type {
 } from "../../../shared/ipc/types";
 
 function getBridge(): ElectronBridge {
-  return (window as unknown as { __bridge: ElectronBridge }).__bridge;
+  return window.__bridge;
 }
 
 function cmd<K extends InvokeChannel>(channel: K): InvokeMethod<K> {

@@ -17,25 +17,24 @@ export function Toolbar(): React.JSX.Element {
 
   const [urlInput, setUrlInput] = useState("");
 
-  // Sync URL input when active panel changes
+  // Sync the URL input with the active panel's live URL.
+  // Subscribe first, then fetch the current value — this ordering prevents a
+  // race where a navigation completes between the fetch call and the subscription
+  // setup, causing the input to show a stale URL.
   useEffect(() => {
-    if (activePanel) {
-      ipc.panels
-        .getUrl({ id: activePanel.id })
-        .then((r) => {
-          if (r.ok) setUrlInput(r.data);
-        })
-        .catch(console.error);
-    } else {
+    if (!activePanel) {
       setUrlInput("");
+      return;
     }
-  }, [activePanel?.id]);
-
-  // Also sync on URL-change push events
-  useEffect(() => {
-    return ipc.panels.onUrlChanged(({ id, url }) => {
-      if (activePanel && id === activePanel.id) setUrlInput(url);
+    const panelId = activePanel.id;
+    const unsub = ipc.panels.onUrlChanged(({ id, url }) => {
+      if (id === panelId) setUrlInput(url);
     });
+    ipc.panels
+      .getUrl({ id: panelId })
+      .then((r) => { if (r.ok) setUrlInput(r.data); })
+      .catch(console.error);
+    return unsub;
   }, [activePanel?.id]);
 
   function handleAddPanel(): void {

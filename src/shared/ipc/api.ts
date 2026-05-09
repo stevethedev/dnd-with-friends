@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { BEYOND20_STATUSES } from "../types";
+import type { Beyond20Status } from "../types";
 import { isHttpUrl } from "../utils";
 
 // ── Shared sub-schemas ────────────────────────────────────────────────────────
@@ -16,11 +16,27 @@ const PanelInfoSchema = z.object({
   width: z.number(),
 });
 
-const Beyond20StatusSchema = z.object({
-  status: z.enum(BEYOND20_STATUSES),
-  version: z.string().nullable(),
-  error: z.string().optional(),
-});
+// One variant per status value so z.discriminatedUnion can use O(1) lookup.
+const Beyond20StatusSchema = z.discriminatedUnion("status", [
+  z.object({ status: z.literal("idle"),        version: z.null() }),
+  z.object({ status: z.literal("checking"),    version: z.null() }),
+  z.object({ status: z.literal("downloading"), version: z.string() }),
+  z.object({ status: z.literal("extracting"),  version: z.string() }),
+  z.object({ status: z.literal("loading"),     version: z.string() }),
+  z.object({ status: z.literal("loaded"),      version: z.string() }),
+  z.object({ status: z.literal("offline"),     version: z.string() }),
+  z.object({ status: z.literal("error"),       version: z.string().nullable(), error: z.string() }),
+]);
+
+// Compile-time guard: TypeScript errors here if the Zod schema and the
+// Beyond20Status discriminated union type in types.ts ever diverge.
+type _AssertSchemaSync =
+  z.infer<typeof Beyond20StatusSchema> extends Beyond20Status
+    ? Beyond20Status extends z.infer<typeof Beyond20StatusSchema>
+      ? true
+      : never
+    : never;
+const _assertSchemaSync: _AssertSchemaSync = true;
 
 // ── API definition ────────────────────────────────────────────────────────────
 

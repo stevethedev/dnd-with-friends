@@ -6,15 +6,15 @@ export function useIpcEvent<T>(
   subscribe: (handler: (v: T) => void) => () => void,
   handler: (payload: T) => void,
 ): void {
-  const ref = useRef(handler);
-  ref.current = handler;
-  useEffect(
-    () =>
-      subscribe((p) => {
-        ref.current(p);
-      }),
-    [subscribe],
-  );
+  const handlerRef = useRef(handler);
+  handlerRef.current = handler;
+  const subscribeRef = useRef(subscribe);
+  subscribeRef.current = subscribe;
+  useEffect(() => {
+    return subscribeRef.current((p) => {
+      handlerRef.current(p);
+    });
+  }, []);
 }
 
 /**

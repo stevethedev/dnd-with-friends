@@ -1,4 +1,4 @@
-/** Canonical list of Beyond20 load states — Zod schema in api.ts derives from this. */
+/** Canonical list of Beyond20 load states. */
 export const BEYOND20_STATUSES = [
   "idle",
   "checking",
@@ -12,11 +12,21 @@ export const BEYOND20_STATUSES = [
 
 export type Beyond20LoadStatus = (typeof BEYOND20_STATUSES)[number];
 
-export interface Beyond20Status {
-  status: Beyond20LoadStatus;
-  version: string | null;
-  error?: string;
-}
+/**
+ * Discriminated union enforcing valid field combinations per state:
+ *  - Transitional states (idle/checking) have no version yet.
+ *  - Progress/success states carry the version string being installed/active.
+ *  - Error state carries a required error message; version is present when the
+ *    target version was already known before the failure (download/extract),
+ *    null when the failure occurred before any version was resolved (API fetch).
+ */
+export type Beyond20Status =
+  | { status: "idle" | "checking"; version: null }
+  | {
+      status: "downloading" | "extracting" | "loading" | "loaded" | "offline";
+      version: string;
+    }
+  | { status: "error"; version: string | null; error: string };
 
 /** Persisted panel configuration saved to the store. */
 export interface PanelConfig {
@@ -43,4 +53,3 @@ export interface StoreSchema {
   panels: PanelConfig[];
   nextPanelId: number;
 }
-

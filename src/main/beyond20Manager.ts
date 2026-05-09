@@ -44,11 +44,8 @@ export function getBeyond20Status(): Beyond20Status {
   return currentStatus;
 }
 
-function setStatus(update: Partial<Beyond20Status>): void {
-  const next = { ...currentStatus, ...update };
-  // Don't carry a stale error string into non-error states
-  if (next.status !== "error") delete next.error;
-  currentStatus = next;
+function setStatus(status: Beyond20Status): void {
+  currentStatus = status;
   statusListener?.(currentStatus);
 }
 
@@ -72,7 +69,7 @@ export async function ensureLatestBeyond20(): Promise<string | null> {
     // First run — no cache yet
   }
 
-  setStatus({ status: "checking" });
+  setStatus({ status: "checking", version: null });
 
   let release: GitHubRelease | null = null;
   try {
@@ -96,6 +93,7 @@ export async function ensureLatestBeyond20(): Promise<string | null> {
     }
     setStatus({
       status: "error",
+      version: null,
       error: "GitHub unreachable and no cached version found",
     });
     return null;
@@ -118,6 +116,7 @@ export async function ensureLatestBeyond20(): Promise<string | null> {
   if (!assetToDownload) {
     setStatus({
       status: "error",
+      version: latestTag,
       error: "No zip asset found in Beyond20 release",
     });
     return null;
@@ -143,7 +142,7 @@ export async function ensureLatestBeyond20(): Promise<string | null> {
       setStatus({ status: "offline", version: cachedTag });
       return extensionDir;
     }
-    setStatus({ status: "error", error: `Download failed: ${msg}` });
+    setStatus({ status: "error", version: latestTag, error: `Download failed: ${msg}` });
     return null;
   }
 
@@ -165,6 +164,7 @@ export async function ensureLatestBeyond20(): Promise<string | null> {
     if (rel.startsWith("..") || isAbsolute(rel)) {
       setStatus({
         status: "error",
+        version: latestTag,
         error: `Zip entry escapes target directory: ${entry.entryName}`,
       });
       return null;
