@@ -41,6 +41,7 @@ type _AssertSchemaSync =
       : never
     : never;
 const _assertSchemaSync: _AssertSchemaSync = true;
+void _assertSchemaSync;
 
 // ── API definition ────────────────────────────────────────────────────────────
 

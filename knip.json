@@ -1,9 +1,9 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "entry": [
-    "src/main/index.ts",
     "src/preload/index.ts",
     "src/preload/resize-handle.ts",
+    "src/renderer/src/resize-handle.ts",
     "src/renderer/src/main.tsx",
     "src/renderer/src/App.tsx",
     "src/renderer/src/types/electron-api.d.ts",

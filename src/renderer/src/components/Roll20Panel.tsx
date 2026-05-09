@@ -16,7 +16,9 @@ export function Roll20Panel(): React.JSX.Element {
       <UrlBar
         value={inputValue}
         onChange={setInputValue}
-        onGo={() => navigate(inputValue)}
+        onGo={() => {
+          navigate(inputValue);
+        }}
         placeholder="https://app.roll20.net/editor/..."
         ariaLabel="Roll20 URL"
       />

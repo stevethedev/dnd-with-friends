@@ -10,7 +10,6 @@ import { BEYOND20_GITHUB_API } from "../shared/constants";
 const GitHubAssetSchema = z.object({
   name: z.string(),
   browser_download_url: z
-    .string()
     .url()
     .refine(
       (url) =>

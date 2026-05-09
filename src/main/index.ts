@@ -24,7 +24,7 @@ app.on("second-instance", () => {
 
 async function loadBeyond20Extension(extensionDir: string): Promise<boolean> {
   try {
-    await session.defaultSession.loadExtension(extensionDir, {
+    await session.defaultSession.extensions.loadExtension(extensionDir, {
       allowFileAccess: false,
     });
     console.log("[Beyond20] Extension loaded successfully");

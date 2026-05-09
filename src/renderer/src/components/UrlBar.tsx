@@ -21,7 +21,9 @@ export function UrlBar({
         className="toolbar__url-input"
         type="text"
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => {
+          onChange(e.target.value);
+        }}
         onKeyDown={(e) => {
           if (e.key === "Enter") onGo();
         }}

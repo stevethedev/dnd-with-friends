@@ -14,7 +14,7 @@ export type IpcResult<T> =
 export function fromZodError(
   channel: string,
   err: ZodError,
-  includeDetails = true,
+  includeDetails: boolean = true,
 ): SerializedError {
   return {
     code: "VALIDATION_ERROR",

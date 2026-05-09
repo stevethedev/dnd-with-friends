@@ -1,22 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import type { IpcResult } from "../../../shared/ipc/errors";
 
-/** Subscribe to a push event, auto-unsub on unmount. Stable handler ref. */
-export function useIpcEvent<T>(
-  subscribe: (handler: (v: T) => void) => () => void,
-  handler: (payload: T) => void,
-): void {
-  const handlerRef = useRef(handler);
-  handlerRef.current = handler;
-  const subscribeRef = useRef(subscribe);
-  subscribeRef.current = subscribe;
-  useEffect(() => {
-    return subscribeRef.current((p) => {
-      handlerRef.current(p);
-    });
-  }, []);
-}
-
 /**
  * Fetches initial value via IPC then stays live via push subscription.
  * Returns `undefined` until the first response arrives.

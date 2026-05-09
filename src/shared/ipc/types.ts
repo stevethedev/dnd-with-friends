@@ -8,12 +8,8 @@ type ObserveChannels = typeof API.observe;
 export type InvokeChannel = keyof InvokeChannels;
 export type ObserveChannel = keyof ObserveChannels;
 
-export type InputOf<K extends InvokeChannel> = z.infer<
-  InvokeChannels[K]["input"]
->;
-export type OutputOf<K extends InvokeChannel> = z.infer<
-  InvokeChannels[K]["output"]
->;
+type InputOf<K extends InvokeChannel> = z.infer<InvokeChannels[K]["input"]>;
+type OutputOf<K extends InvokeChannel> = z.infer<InvokeChannels[K]["output"]>;
 export type PayloadOf<K extends ObserveChannel> = z.infer<ObserveChannels[K]>;
 
 export type InvokeMethod<K extends InvokeChannel> = (
@@ -24,7 +20,7 @@ export type ObserveMethod<K extends ObserveChannel> = (
   handler: (payload: PayloadOf<K>) => void,
 ) => () => void;
 
-export type HandlerFn<K extends InvokeChannel> = (
+type HandlerFn<K extends InvokeChannel> = (
   input: InputOf<K>,
 ) => OutputOf<K> | Promise<OutputOf<K>>;
 

@@ -11,6 +11,7 @@ body {
   padding: 0;
   background: #1a1a2e;
   overflow: hidden;
+  /* eslint-disable-next-line css/use-baseline */
   user-select: none;
   -webkit-user-select: none;
 }
@@ -38,6 +39,7 @@ body {
     -apple-system,
     sans-serif;
   font-size: 13px;
+  /* eslint-disable-next-line css/no-invalid-properties */
   -webkit-app-region: drag;
 }
 
@@ -47,6 +49,7 @@ body {
   display: flex;
   align-items: center;
   flex-shrink: 0;
+  /* eslint-disable-next-line css/no-invalid-properties */
   -webkit-app-region: no-drag;
 }
 
@@ -67,6 +70,7 @@ body {
   transition:
     background 0.15s,
     border-color 0.15s;
+  /* eslint-disable-next-line css/no-invalid-properties */
   -webkit-app-region: no-drag;
   max-width: 160px;
 }
@@ -111,6 +115,7 @@ body {
   font-size: 14px;
   line-height: 1;
   cursor: pointer;
+  /* eslint-disable-next-line css/no-invalid-properties */
   -webkit-app-region: no-drag;
   transition:
     background 0.15s,
@@ -136,6 +141,7 @@ body {
   font-size: 16px;
   line-height: 1;
   cursor: pointer;
+  /* eslint-disable-next-line css/no-invalid-properties */
   -webkit-app-region: no-drag;
   transition:
     background 0.15s,
@@ -155,6 +161,7 @@ body {
   align-items: center;
   gap: 4px;
   flex-shrink: 0;
+  /* eslint-disable-next-line css/no-invalid-properties */
   -webkit-app-region: no-drag;
 }
 
@@ -167,6 +174,7 @@ body {
   flex: 1;
   min-width: 0;
   justify-content: flex-end;
+  /* eslint-disable-next-line css/no-invalid-properties */
   -webkit-app-region: no-drag;
 }
 
@@ -190,6 +198,7 @@ body {
   color: #e0e0e0;
   font-size: 12px;
   outline: none;
+  /* eslint-disable-next-line css/no-invalid-properties */
   -webkit-app-region: no-drag;
 }
 
@@ -208,6 +217,7 @@ body {
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
+  /* eslint-disable-next-line css/no-invalid-properties */
   -webkit-app-region: no-drag;
   transition: background 0.15s;
 }
@@ -228,6 +238,7 @@ body {
   gap: 6px;
   flex-shrink: 0;
   padding: 0 10px;
+  /* eslint-disable-next-line css/no-invalid-properties */
   -webkit-app-region: no-drag;
   cursor: default;
 }
@@ -283,6 +294,7 @@ body {
   gap: 8px;
   flex-shrink: 0;
   padding: 0 8px 0 16px;
+  /* eslint-disable-next-line css/no-invalid-properties */
   -webkit-app-region: no-drag;
 }
 
@@ -340,6 +352,7 @@ body {
   align-items: stretch;
   flex-shrink: 0;
   height: 100%;
+  /* eslint-disable-next-line css/no-invalid-properties */
   -webkit-app-region: no-drag;
 }
 
