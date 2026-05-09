@@ -1,27 +1,43 @@
 appId: com.dndwithfriends.app
 productName: DnD With Friends
+artifactName: ${productName}-${version}-${os}-${arch}.${ext}
+
+publish:
+  provider: github
+
 directories:
   buildResources: resources
   output: dist
+
+asar: true
+
 files:
   - out/**/*
   - "!**/*.{map,md}"
+
 win:
   target:
     - target: nsis
-      arch: [x64]
-  icon: resources/icon.ico
+      arch:
+        - x64
+  icon: resources/icons/icon.ico
+
 mac:
+  category: public.app-category.games
   target:
     - target: dmg
-      arch: [x64, arm64]
-  icon: resources/icon.icns
-  category: public.app-category.games
+      arch:
+        - x64
+        - arm64
+  icon: resources/icons/icon.icns
+
 linux:
   target:
     - target: AppImage
-      arch: [x64]
-  icon: resources/icon.png
+      arch:
+        - x64
+  icon: resources/icons
+
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true

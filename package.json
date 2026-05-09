@@ -17,7 +17,7 @@
     "fix": "npm-run-all fix:*",
     "fix:format": "prettier --write .",
     "fix:lint": "eslint --fix .",
-    "icons": "icon-gen -i ./resources/icon.png -o ./resources/icons --ico --ico-name=icon --icns --icns-name icon",
+    "icons": "icon-gen -i ./resources/icon.png -o ./resources/icons --ico --ico-name=icon --icns --icns-name icon --favicon --favicon-name icon --favicon-png-sizes 16,32,128,256,512,1024",
     "preview": "electron-vite preview",
     "package": "electron-builder",
     "prepackage": "npm run build",
@@ -35,23 +35,6 @@
   "keywords": [],
   "author": "stevenmjimenez@gmail.com",
   "license": "MIT",
-  "build": {
-    "publish": {
-      "provider": "github"
-    },
-    "directories": {
-      "buildResources": "resources"
-    },
-    "win": {
-      "icon": "resources/icons/icon.ico"
-    },
-    "mac": {
-      "icon": "resources/icons/icon.icns"
-    },
-    "linux": {
-      "icon": "resources/icon.png"
-    }
-  },
   "dependencies": {
     "adm-zip": "^0.5.17",
     "electron-store": "^11.0.2",
