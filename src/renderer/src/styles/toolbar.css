@@ -22,8 +22,6 @@ body {
   background: #1a1a2e;
 }
 
-/* ─── Toolbar ─────────────────────────────────────────────────────────────── */
-
 .toolbar {
   height: 48px;
   width: 100%;
@@ -42,8 +40,6 @@ body {
   /* eslint-disable-next-line css/no-invalid-properties */
   -webkit-app-region: drag;
 }
-
-/* ─── Panel toggle button group ──────────────────────────────────────────── */
 
 .toolbar__panel-btn-group {
   display: flex;
@@ -128,8 +124,6 @@ body {
   color: #fca5a5;
 }
 
-/* ─── Add panel button ────────────────────────────────────────────────────── */
-
 .toolbar__add-panel {
   flex-shrink: 0;
   height: 28px;
@@ -154,8 +148,6 @@ body {
   color: #ede9fe;
 }
 
-/* ─── Active-panel URL bar ────────────────────────────────────────────────── */
-
 .toolbar__active-url {
   display: flex;
   align-items: center;
@@ -164,8 +156,6 @@ body {
   /* eslint-disable-next-line css/no-invalid-properties */
   -webkit-app-region: no-drag;
 }
-
-/* ─── Roll20 panel section ────────────────────────────────────────────────── */
 
 .toolbar__panel {
   display: flex;
@@ -230,8 +220,6 @@ body {
   background: #5b21b6;
 }
 
-/* ─── Beyond20 status badge ──────────────────────────────────────────────── */
-
 .toolbar__b20 {
   display: flex;
   align-items: center;
@@ -285,8 +273,6 @@ body {
   color: #aaa;
   white-space: nowrap;
 }
-
-/* ─── macOS traffic lights ───────────────────────────────────────────────── */
 
 .wc-mac {
   display: flex;
@@ -344,8 +330,6 @@ body {
   line-height: 1;
   color: #003600;
 }
-
-/* ─── Windows 11 window controls ────────────────────────────────────────── */
 
 .wc-win {
   display: flex;

@@ -18,8 +18,6 @@ import {
 } from "../shared/constants";
 import type { PanelConfig, PanelInfo } from "../shared/types";
 
-// ─── Internal state ──────────────────────────────────────────────────────────
-
 /**
  * Internal runtime state for a panel — lives in the main process only.
  * Contains the live WebContentsView alongside config/display data.
@@ -55,8 +53,6 @@ function clearAnimationTimer(): void {
   }
 }
 
-// ─── Layout helpers ───────────────────────────────────────────────────────────
-
 /** Clamp rawWidth to [MIN_PANEL_WIDTH, 80% of window width]. */
 function constrainPanelWidth(rawWidth: number, winWidth: number): number {
   return Math.max(
@@ -69,8 +65,6 @@ function constrainPanelWidth(rawWidth: number, winWidth: number): number {
 function contentHeight(winHeight: number): number {
   return Math.max(0, winHeight - TOOLBAR_HEIGHT);
 }
-
-// ─── Public accessors ─────────────────────────────────────────────────────────
 
 export function getMainWindow(): BrowserWindow {
   if (!mainWindow) throw new Error("Main window not yet created");
@@ -85,8 +79,6 @@ export function getRoll20View(): WebContentsView {
 export function getResizeHandleView(): WebContentsView | null {
   return resizeHandleView;
 }
-
-// ─── Security helpers ─────────────────────────────────────────────────────────
 
 /**
  * Returns the shared webPreferences for all content WebContentsViews.
@@ -136,8 +128,6 @@ function safeOpenExternal(url: string): void {
 export function getPanelInfoList(): PanelInfo[] {
   return Array.from(panelMap.values()).map(panelStateToInfo);
 }
-
-// ─── Panel management ─────────────────────────────────────────────────────────
 
 export function addPanel(config: PanelConfig): PanelInfo {
   if (panelMap.has(config.id)) {
@@ -269,8 +259,6 @@ export function endPanelDrag(id: string, rawWidth: number): void {
   sendPanelListUpdate();
 }
 
-// ─── Window creation ──────────────────────────────────────────────────────────
-
 export function createWindowWithPanels(): BrowserWindow {
   const win = new BrowserWindow({
     width: WINDOW_DEFAULT_WIDTH,
@@ -331,8 +319,6 @@ export function createWindowWithPanels(): BrowserWindow {
 
   return win;
 }
-
-// ─── Private: window-creation helpers ────────────────────────────────────────
 
 /** Create and configure the Roll20 WebContentsView. */
 function createRoll20View(win: BrowserWindow): WebContentsView {
@@ -433,8 +419,6 @@ function setupRendererDiagnostics(win: BrowserWindow): void {
     console.log("[Renderer] Loaded successfully");
   });
 }
-
-// ─── Private helpers ──────────────────────────────────────────────────────────
 
 function createPanelView(id: string, url: string): WebContentsView {
   const view = new WebContentsView({ webPreferences: contentViewWebPrefs() });

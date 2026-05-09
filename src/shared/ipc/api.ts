@@ -2,8 +2,6 @@ import { z } from "zod";
 import type { Beyond20Status } from "../types";
 import { isHttpUrl } from "../utils";
 
-// ── Shared sub-schemas ────────────────────────────────────────────────────────
-
 const HttpUrlSchema = z.string().refine(isHttpUrl, {
   message: "Must be an http/https URL",
 });
@@ -42,8 +40,6 @@ type _AssertSchemaSync =
     : never;
 const _assertSchemaSync: _AssertSchemaSync = true;
 void _assertSchemaSync;
-
-// ── API definition ────────────────────────────────────────────────────────────
 
 export const API = {
   invoke: {

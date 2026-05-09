@@ -5,8 +5,6 @@ import { z } from "zod";
 import type { Beyond20Status } from "../shared/types";
 import { BEYOND20_GITHUB_API } from "../shared/constants";
 
-// ── GitHub API response schemas ───────────────────────────────────────────────
-
 const GitHubAssetSchema = z.object({
   name: z.string(),
   browser_download_url: z

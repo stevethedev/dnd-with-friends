@@ -13,7 +13,6 @@ window.resizeAPI.onInit((pid: string, width: number) => {
   panelWidth = width;
 });
 
-// ── Drag start ──────────────────────────────────────────────────────────────
 handle.addEventListener("mousedown", (e: MouseEvent) => {
   if (e.button !== 0 || !panelId) return;
   isDragging = true;
@@ -29,7 +28,6 @@ handle.addEventListener("mousedown", (e: MouseEvent) => {
   e.preventDefault();
 });
 
-// ── Drag move ───────────────────────────────────────────────────────────────
 document.addEventListener("mousemove", (e: MouseEvent) => {
   if (!isDragging || !panelId) {
     return;
@@ -41,7 +39,6 @@ document.addEventListener("mousemove", (e: MouseEvent) => {
   window.resizeAPI.resize(panelId, newWidth);
 });
 
-// ── Drag end ────────────────────────────────────────────────────────────────
 document.addEventListener("mouseup", (e: MouseEvent) => {
   if (!isDragging || e.button !== 0 || !panelId) {
     return;
