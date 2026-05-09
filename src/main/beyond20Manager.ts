@@ -1,6 +1,6 @@
 import { app } from "electron";
-import { join, resolve, relative, isAbsolute } from "path";
-import { promises as fs } from "fs";
+import { join, resolve, relative, isAbsolute } from "node:path";
+import { promises as fs } from "node:fs";
 import { z } from "zod";
 import type { Beyond20Status } from "../shared/types";
 import { BEYOND20_GITHUB_API } from "../shared/constants";
