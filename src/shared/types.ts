@@ -1,17 +1,3 @@
-/** Canonical list of Beyond20 load states. */
-export const BEYOND20_STATUSES = [
-  "idle",
-  "checking",
-  "downloading",
-  "extracting",
-  "loading",
-  "loaded",
-  "offline",
-  "error",
-] as const;
-
-export type Beyond20LoadStatus = (typeof BEYOND20_STATUSES)[number];
-
 /**
  * Discriminated union enforcing valid field combinations per state:
  *  - Transitional states (idle/checking) have no version yet.
@@ -27,6 +13,9 @@ export type Beyond20Status =
       version: string;
     }
   | { status: "error"; version: string | null; error: string };
+
+/** All possible Beyond20 load-state strings, derived from the discriminated union. */
+export type Beyond20LoadStatus = Beyond20Status["status"];
 
 /** Persisted panel configuration saved to the store. */
 export interface PanelConfig {

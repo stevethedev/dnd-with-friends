@@ -134,13 +134,7 @@ function safeOpenExternal(url: string): void {
 }
 
 export function getPanelInfoList(): PanelInfo[] {
-  return Array.from(panelMap.values()).map((p) => ({
-    id: p.id,
-    title: p.title,
-    url: p.url,
-    isOpen: p.id === activePanelId,
-    width: p.width,
-  }));
+  return Array.from(panelMap.values()).map(panelStateToInfo);
 }
 
 // ─── Panel management ─────────────────────────────────────────────────────────

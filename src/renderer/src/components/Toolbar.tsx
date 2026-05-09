@@ -42,8 +42,10 @@ export function Toolbar(): React.JSX.Element {
   }
 
   function handleGo(): void {
-    if (!activePanel || !urlInput.trim()) return;
-    navigatePanel(activePanel.id, urlInput.trim());
+    if (!activePanel) return;
+    const url = urlInput.trim();
+    if (!url) return;
+    navigatePanel(activePanel.id, url);
   }
 
   return (

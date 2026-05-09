@@ -11,11 +11,15 @@ export type IpcResult<T> =
   | { ok: true; data: T }
   | { ok: false; error: SerializedError };
 
-export function fromZodError(channel: string, err: ZodError): SerializedError {
+export function fromZodError(
+  channel: string,
+  err: ZodError,
+  includeDetails = true,
+): SerializedError {
   return {
     code: "VALIDATION_ERROR",
     channel,
     message: err.message,
-    details: err.issues,
+    ...(includeDetails && { details: err.issues }),
   };
 }
