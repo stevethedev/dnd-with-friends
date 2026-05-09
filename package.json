@@ -42,9 +42,15 @@
     "directories": {
       "buildResources": "resources"
     },
-    "win": { "icon":  "resources/icons/icon.ico" },
-    "mac": { "icon": "resources/icons/icon.icns" },
-    "linux": { "icon": "resources/icon.png" }
+    "win": {
+      "icon": "resources/icons/icon.ico"
+    },
+    "mac": {
+      "icon": "resources/icons/icon.icns"
+    },
+    "linux": {
+      "icon": "resources/icon.png"
+    }
   },
   "dependencies": {
     "adm-zip": "^0.5.17",
@@ -52,6 +58,8 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@emnapi/core": "^1.10.0",
+    "@emnapi/runtime": "^1.10.0",
     "@eslint/css": "^1.2.0",
     "@eslint/js": "^10.0.1",
     "@eslint/json": "^1.2.0",
