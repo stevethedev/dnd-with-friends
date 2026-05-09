@@ -13,7 +13,7 @@ between sessions.
 Download the latest release for your platform from [Releases]:
 
 | Platform | Format                   |
-|----------|--------------------------|
+| -------- | ------------------------ |
 | Windows  | NSIS installer (x64)     |
 | macOS    | DMG (x64, Apple Silicon) |
 | Linux    | AppImage (x64)           |
@@ -42,7 +42,7 @@ The app runs as a standard Electron main/renderer split with one wrinkle: the ac
 never touches the renderer. Instead, each site runs in its own sandboxed `WebContentsView` in the main process. The
 renderer is a small (48px tall) React app taking up the toolbar, and talks to the main process over a typed IPC bridge.
 
-```
+```text
 BrowserWindow
 ├─ toolbar renderer (React)       ← only this goes through the normal preload
 ├─ WebContentsView: Roll20        ← full-window, behind the toolbar
