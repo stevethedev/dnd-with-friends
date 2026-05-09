@@ -275,35 +275,93 @@ body {
   white-space: nowrap;
 }
 
-/* ─── Window controls ────────────────────────────────────────────────────── */
+/* ─── macOS traffic lights ───────────────────────────────────────────────── */
 
-.toolbar__window-controls {
+.wc-mac {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   flex-shrink: 0;
+  padding: 0 8px 0 16px;
   -webkit-app-region: no-drag;
 }
 
-.toolbar__wc-btn {
+.wc-mac__btn {
   width: 12px;
   height: 12px;
   border-radius: 50%;
   border: none;
   cursor: pointer;
   padding: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: filter 0.1s;
 }
 
-.toolbar__wc-btn--close {
-  background: #ef4444;
+.wc-mac__btn--close { background: #ff5f57; }
+.wc-mac__btn--min   { background: #febc2e; }
+.wc-mac__btn--max   { background: #28c840; }
+
+.wc-mac__btn:hover { filter: brightness(0.85); }
+
+.wc-mac:hover .wc-mac__btn--close::before {
+  content: "✕";
+  font-size: 8px;
+  line-height: 1;
+  color: #4d0000;
 }
-.toolbar__wc-btn--min {
-  background: #f59e0b;
+.wc-mac:hover .wc-mac__btn--min::before {
+  content: "─";
+  font-size: 8px;
+  line-height: 1;
+  color: #4d2900;
 }
-.toolbar__wc-btn--max {
-  background: #22c55e;
+.wc-mac:hover .wc-mac__btn--max::before {
+  content: "⤢";
+  font-size: 8px;
+  line-height: 1;
+  color: #003600;
 }
 
-.toolbar__wc-btn:hover {
-  filter: brightness(1.2);
+/* ─── Windows 11 window controls ────────────────────────────────────────── */
+
+.wc-win {
+  display: flex;
+  align-items: stretch;
+  flex-shrink: 0;
+  height: 100%;
+  -webkit-app-region: no-drag;
+}
+
+.wc-win__btn {
+  width: 46px;
+  height: 100%;
+  background: transparent;
+  border: none;
+  color: #e0e0e0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition:
+    background 0.1s,
+    color 0.1s;
+}
+
+.wc-win__btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.wc-win__btn--close:hover {
+  background: #c42b1c;
+  color: #fff;
+}
+
+/* Flush right edge on Windows/Linux */
+.toolbar[data-platform="win32"],
+.toolbar[data-platform="linux"] {
+  padding-right: 0;
 }

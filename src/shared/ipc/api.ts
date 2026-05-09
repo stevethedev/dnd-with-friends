@@ -68,12 +68,14 @@ export const API = {
     "window.minimize": { input: z.void(), output: z.void() },
     "window.maximize": { input: z.void(), output: z.void() },
     "window.close": { input: z.void(), output: z.void() },
+    "window.isMaximized": { input: z.void(), output: z.boolean() },
   },
   observe: {
     "panel.listUpdated": z.array(PanelInfoSchema),
     "panel.urlChanged": z.object({ id: z.string(), url: z.string() }),
     "roll20.urlChanged": z.string(),
     "beyond20.statusUpdated": Beyond20StatusSchema,
+    "window.maximizeChanged": z.boolean(),
   },
 } as const;
 

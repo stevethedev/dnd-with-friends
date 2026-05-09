@@ -31,3 +31,4 @@ const bridge: ElectronBridge = {
 };
 
 contextBridge.exposeInMainWorld("__bridge", bridge);
+contextBridge.exposeInMainWorld("__platform", process.platform);

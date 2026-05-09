@@ -11,6 +11,7 @@ declare global {
   interface Window {
     __bridge: ElectronBridge;
     resizeAPI: ResizeAPI;
+    __platform: string;
   }
 }
 

@@ -55,6 +55,7 @@ export function createHandlers(): HandlerMap {
     "window.close": async () => {
       getMainWindow().close();
     },
+    "window.isMaximized": async () => getMainWindow().isMaximized(),
   };
 }
 

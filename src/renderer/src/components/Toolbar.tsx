@@ -7,6 +7,8 @@ import { usePanels } from "../hooks/usePanels";
 import { ipc } from "../../lib/ipc/client";
 import { DEFAULT_DND_URL } from "../../../shared/constants";
 
+const platform = window.__platform;
+
 export function Toolbar(): React.JSX.Element {
   const { panels, toggle, createPanel, removePanel, navigatePanel } =
     usePanels();
@@ -45,8 +47,8 @@ export function Toolbar(): React.JSX.Element {
   }
 
   return (
-    <div className="toolbar">
-      <WindowControls />
+    <div className="toolbar" data-platform={platform}>
+      {platform === "darwin" && <WindowControls />}
 
       {/* Panel toggle buttons */}
       {panels.map((panel) => (
@@ -93,6 +95,8 @@ export function Toolbar(): React.JSX.Element {
 
       <Beyond20Status />
       <Roll20Panel />
+
+      {platform !== "darwin" && <WindowControls />}
     </div>
   );
 }

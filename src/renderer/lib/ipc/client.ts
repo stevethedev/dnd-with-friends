@@ -41,8 +41,10 @@ export const ipc = {
     onStatusUpdated: evt("beyond20.statusUpdated"),
   },
   window: {
-    minimize: cmd("window.minimize"),
-    maximize: cmd("window.maximize"),
-    close: cmd("window.close"),
+    minimize:          cmd("window.minimize"),
+    maximize:          cmd("window.maximize"),
+    close:             cmd("window.close"),
+    isMaximized:       cmd("window.isMaximized"),
+    onMaximizeChanged: evt("window.maximizeChanged"),
   },
 } as const;

@@ -281,6 +281,8 @@ export function createWindowWithPanels(): BrowserWindow {
   setupRendererDiagnostics(win);
   layoutRoll20();
   win.on("resize", onWindowResize);
+  win.on("maximize",   () => pushEvent(win, "window.maximizeChanged", true));
+  win.on("unmaximize", () => pushEvent(win, "window.maximizeChanged", false));
   void win.loadFile(join(__dirname, "../renderer/index.html"));
 
   win.on("closed", () => {
