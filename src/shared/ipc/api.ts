@@ -1,19 +1,12 @@
 import { z } from "zod";
 import { BEYOND20_STATUSES } from "../types";
+import { isHttpUrl } from "../utils";
 
 // ── Shared sub-schemas ────────────────────────────────────────────────────────
 
-const HttpUrlSchema = z.string().refine(
-  (s) => {
-    try {
-      const u = new URL(s);
-      return u.protocol === "http:" || u.protocol === "https:";
-    } catch {
-      return false;
-    }
-  },
-  { message: "Must be an http/https URL" },
-);
+const HttpUrlSchema = z.string().refine(isHttpUrl, {
+  message: "Must be an http/https URL",
+});
 
 const PanelInfoSchema = z.object({
   id: z.string(),

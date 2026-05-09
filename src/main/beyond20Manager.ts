@@ -34,7 +34,7 @@ const EXTENSION_DIR = "extension";
 let currentStatus: Beyond20Status = { status: "idle", version: null };
 let statusListener: ((status: Beyond20Status) => void) | null = null;
 
-export function onBeyond20StatusChange(
+export function setBeyond20StatusListener(
   fn: (status: Beyond20Status) => void,
 ): void {
   statusListener = fn;

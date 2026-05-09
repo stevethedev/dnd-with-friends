@@ -3,6 +3,7 @@ import { WindowControls } from "./WindowControls";
 import { Beyond20Status } from "./Beyond20Status";
 import { Roll20Panel } from "./Roll20Panel";
 import { PanelButton } from "./PanelButton";
+import { UrlBar } from "./UrlBar";
 import { usePanels } from "../hooks/usePanels";
 import { ipc } from "../../lib/ipc/client";
 import { DEFAULT_DND_URL } from "../../../shared/constants";
@@ -73,23 +74,12 @@ export function Toolbar(): React.JSX.Element {
       {/* URL bar for active panel */}
       {activePanel && (
         <div className="toolbar__active-url">
-          <input
-            className="toolbar__url-input"
-            type="text"
+          <UrlBar
             value={urlInput}
-            onChange={(e) => {
-              setUrlInput(e.target.value);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleGo();
-            }}
-            placeholder="https://..."
-            aria-label={`URL for ${activePanel.title}`}
-            spellCheck={false}
+            onChange={setUrlInput}
+            onGo={handleGo}
+            ariaLabel={`URL for ${activePanel.title}`}
           />
-          <button className="toolbar__btn" onClick={handleGo}>
-            Go
-          </button>
         </div>
       )}
 

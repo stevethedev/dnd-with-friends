@@ -1,19 +1,19 @@
 import { ipcMain, app } from "electron";
 import { API } from "../../shared/ipc/api";
-import { IpcError } from "../../shared/ipc/errors";
+import { fromZodError } from "../../shared/ipc/errors";
 import type { HandlerMap, InvokeChannel } from "../../shared/ipc/types";
 
 export function registerHandlers(handlers: HandlerMap): void {
   for (const channel of Object.keys(API.invoke) as InvokeChannel[]) {
     const contract = API.invoke[channel];
-    const handler = handlers[channel] as (input: unknown) => Promise<unknown>;
+    const handler = handlers[channel] as (input: unknown) => unknown;
 
     ipcMain.handle(channel, async (_event, rawInput): Promise<unknown> => {
       const parsed = contract.input.safeParse(rawInput ?? undefined);
       if (!parsed.success) {
         // In packaged builds omit the detailed Zod issues — they expose internal
         // schema structure that is unnecessary noise for the renderer.
-        const { code, channel: ch, message, details } = IpcError.fromZod(
+        const { code, channel: ch, message, details } = fromZodError(
           channel,
           parsed.error,
         );

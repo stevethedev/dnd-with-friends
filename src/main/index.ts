@@ -1,7 +1,7 @@
 import { app, BrowserWindow, session } from "electron";
 import {
   ensureLatestBeyond20,
-  onBeyond20StatusChange,
+  setBeyond20StatusListener,
 } from "./beyond20Manager";
 import { createWindowWithPanels, getMainWindow } from "./windowManager";
 import { registerIpcHandlers, pushEvent } from "./ipc";
@@ -67,7 +67,7 @@ void app.whenReady().then(async () => {
   createWindowWithPanels();
 
   // Step 5: Forward Beyond20 status updates to the renderer
-  onBeyond20StatusChange((status) => {
+  setBeyond20StatusListener((status) => {
     try {
       pushEvent(getMainWindow(), "beyond20.statusUpdated", status);
     } catch {

@@ -3,6 +3,7 @@ import { join } from "path";
 import { store } from "./store";
 import { IPC_CHANNELS } from "../shared/ipcChannels";
 import { pushEvent } from "./ipc/emitter";
+import { isHttpUrl } from "../shared/utils";
 import {
   TOOLBAR_HEIGHT,
   RESIZE_HANDLE_WIDTH,
@@ -47,6 +48,13 @@ let animationTimer: ReturnType<typeof setInterval> | null = null;
 const ANIM_DURATION_MS = 220;
 const ANIM_FPS = 60;
 
+function clearAnimationTimer(): void {
+  if (animationTimer !== null) {
+    clearInterval(animationTimer);
+    animationTimer = null;
+  }
+}
+
 // ─── Layout helpers ───────────────────────────────────────────────────────────
 
 /** Clamp rawWidth to [MIN_PANEL_WIDTH, 80% of window width]. */
@@ -79,16 +87,6 @@ export function getResizeHandleView(): WebContentsView | null {
 }
 
 // ─── Security helpers ─────────────────────────────────────────────────────────
-
-/** Return true only for well-formed http/https URLs. */
-function isHttpUrl(url: string): boolean {
-  try {
-    const parsed = new URL(url);
-    return parsed.protocol === "http:" || parsed.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
 
 /**
  * Open a URL in the system browser, but only if it is a well-formed http/https URL.
@@ -293,10 +291,7 @@ export function createWindowWithPanels(): BrowserWindow {
   void win.loadFile(join(__dirname, "../renderer/index.html"));
 
   win.on("closed", () => {
-    if (animationTimer !== null) {
-      clearInterval(animationTimer);
-      animationTimer = null;
-    }
+    clearAnimationTimer();
     mainWindow = null;
     roll20View = null;
     resizeHandleView = null;
@@ -522,10 +517,7 @@ function animatePanel(id: string, open: boolean): void {
   const endX = open ? 0 : -panelW;
   const startTime = Date.now();
 
-  if (animationTimer !== null) {
-    clearInterval(animationTimer);
-    animationTimer = null;
-  }
+  clearAnimationTimer();
 
   if (open) {
     state.view.setBounds({
@@ -541,10 +533,7 @@ function animatePanel(id: string, open: boolean): void {
   animationTimer = setInterval(
     () => {
       if (!mainWindow) {
-        if (animationTimer !== null) {
-          clearInterval(animationTimer);
-          animationTimer = null;
-        }
+        clearAnimationTimer();
         return;
       }
 
@@ -566,10 +555,7 @@ function animatePanel(id: string, open: boolean): void {
       }
 
       if (t >= 1) {
-        if (animationTimer !== null) {
-          clearInterval(animationTimer);
-          animationTimer = null;
-        }
+        clearAnimationTimer();
 
         if (open) {
           resizeHandleView?.webContents.send(
@@ -599,9 +585,7 @@ function repositionResizeHandle(panelRightX: number, panelH: number): void {
 }
 
 function hideResizeHandle(): void {
-  if (!resizeHandleView) {
-    throw new Error("No resize handle view");
-  }
+  if (!resizeHandleView) return;
   resizeHandleView.setBounds({
     x: -20,
     y: TOOLBAR_HEIGHT,

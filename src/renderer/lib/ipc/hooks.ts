@@ -26,14 +26,18 @@ export function useIpcState<T>(
   subscribe: (handler: (payload: T) => void) => () => void,
 ): T | undefined {
   const [value, setValue] = useState<T | undefined>(undefined);
+  const queryRef = useRef(query);
+  queryRef.current = query;
+  const subscribeRef = useRef(subscribe);
+  subscribeRef.current = subscribe;
 
   useEffect(() => {
-    query()
+    queryRef.current()
       .then((r) => {
         if (r.ok) setValue(r.data);
       })
       .catch(console.error);
-    return subscribe(setValue);
+    return subscribeRef.current(setValue);
   }, []);
 
   return value;

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useRoll20Navigation } from "../hooks/useWebViewNavigation";
+import { UrlBar } from "./UrlBar";
 
 export function Roll20Panel(): React.JSX.Element {
   const { currentUrl, navigate } = useRoll20Navigation();
@@ -9,30 +10,16 @@ export function Roll20Panel(): React.JSX.Element {
     setInputValue(currentUrl);
   }, [currentUrl]);
 
-  function handleGo(): void {
-    navigate(inputValue);
-  }
-
   return (
     <div className="toolbar__panel">
       <span className="toolbar__panel-label">Roll20</span>
-      <input
-        className="toolbar__url-input"
-        type="text"
+      <UrlBar
         value={inputValue}
-        onChange={(e) => {
-          setInputValue(e.target.value);
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") handleGo();
-        }}
+        onChange={setInputValue}
+        onGo={() => navigate(inputValue)}
         placeholder="https://app.roll20.net/editor/..."
-        aria-label="Roll20 URL"
-        spellCheck={false}
+        ariaLabel="Roll20 URL"
       />
-      <button className="toolbar__btn" onClick={handleGo} aria-label="Go">
-        Go
-      </button>
     </div>
   );
 }

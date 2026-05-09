@@ -26,7 +26,7 @@ export type ObserveMethod<K extends ObserveChannel> = (
 
 export type HandlerFn<K extends InvokeChannel> = (
   input: InputOf<K>,
-) => OutputOf<K>;
+) => OutputOf<K> | Promise<OutputOf<K>>;
 
 /** Exhaustive map — TypeScript errors if any declared channel is missing. */
 export type HandlerMap = { [K in InvokeChannel]: HandlerFn<K> };
