@@ -1,4 +1,4 @@
-const MIN_PANEL_WIDTH = 320; // canonical value: shared/constants.ts MIN_PANEL_WIDTH
+import { MIN_PANEL_WIDTH } from "../../shared/constants";
 let panelId: string | null = null;
 let panelWidth = 0;
 let isDragging = false;

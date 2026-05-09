@@ -13,9 +13,16 @@ export function registerHandlers(handlers: HandlerMap): void {
       if (!parsed.success) {
         // In packaged builds omit the detailed Zod issues — they expose internal
         // schema structure that is unnecessary noise for the renderer.
-        const error = IpcError.fromZod(channel, parsed.error);
-        if (app.isPackaged) delete error.details;
-        return { ok: false, error };
+        const { code, channel: ch, message, details } = IpcError.fromZod(
+          channel,
+          parsed.error,
+        );
+        return {
+          ok: false,
+          error: app.isPackaged
+            ? { code, channel: ch, message }
+            : { code, channel: ch, message, details },
+        };
       }
       try {
         const result = await handler(parsed.data);

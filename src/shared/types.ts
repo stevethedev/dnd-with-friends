@@ -35,18 +35,8 @@ export interface PanelInfo {
 }
 
 export interface StoreSchema {
-  beyond20Version: string | null;
   lastRoll20Url: string;
   panels: PanelConfig[];
   nextPanelId: number;
 }
 
-export interface GitHubAsset {
-  name: string;
-  browser_download_url: string;
-}
-
-export interface GitHubRelease {
-  tag_name: string;
-  assets: GitHubAsset[];
-}

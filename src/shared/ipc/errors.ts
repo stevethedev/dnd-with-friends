@@ -29,14 +29,6 @@ export class IpcError implements SerializedError {
     });
   }
 
-  static unknown(channel: string): SerializedError {
-    return new IpcError({
-      code: "UNKNOWN_CHANNEL",
-      channel,
-      message: `Unknown channel: ${channel}`,
-    });
-  }
-
   readonly code: string;
   readonly channel: string;
   readonly message: string;

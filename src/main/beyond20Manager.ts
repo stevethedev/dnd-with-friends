@@ -1,12 +1,31 @@
 import { app } from "electron";
-import { join } from "path";
+import { join, resolve } from "path";
 import { promises as fs } from "fs";
-import type {
-  Beyond20Status,
-  GitHubAsset,
-  GitHubRelease,
-} from "../shared/types";
+import { z } from "zod";
+import type { Beyond20Status } from "../shared/types";
 import { BEYOND20_GITHUB_API } from "../shared/constants";
+
+// ── GitHub API response schemas ───────────────────────────────────────────────
+
+const GitHubAssetSchema = z.object({
+  name: z.string(),
+  browser_download_url: z
+    .string()
+    .url()
+    .refine(
+      (url) =>
+        url.startsWith("https://github.com/") ||
+        url.startsWith("https://objects.githubusercontent.com/"),
+      { message: "Download URL must be hosted on github.com" },
+    ),
+});
+
+const GitHubReleaseSchema = z.object({
+  tag_name: z.string().min(1),
+  assets: z.array(GitHubAssetSchema),
+});
+
+type GitHubRelease = z.infer<typeof GitHubReleaseSchema>;
 
 const CACHE_DIR = "beyond20";
 const VERSION_FILE = "version.txt";
@@ -59,7 +78,10 @@ export async function ensureLatestBeyond20(): Promise<string | null> {
     });
     if (!response.ok)
       throw new Error(`GitHub API returned HTTP ${response.status}`);
-    release = (await response.json()) as GitHubRelease;
+    const parsed = GitHubReleaseSchema.safeParse(await response.json());
+    if (!parsed.success)
+      throw new Error(`Unexpected GitHub API response: ${parsed.error.message}`);
+    release = parsed.data;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.warn("[Beyond20] GitHub API unavailable:", msg);
@@ -87,9 +109,8 @@ export async function ensureLatestBeyond20(): Promise<string | null> {
   // Prefer the chrome-specific zip; fall back to any zip in the release assets
   const assetToDownload =
     release.assets.find(
-      (a: GitHubAsset) =>
-        a.name.toLowerCase().includes("chrome") && a.name.endsWith(".zip"),
-    ) ?? release.assets.find((a: GitHubAsset) => a.name.endsWith(".zip"));
+      (a) => a.name.toLowerCase().includes("chrome") && a.name.endsWith(".zip"),
+    ) ?? release.assets.find((a) => a.name.endsWith(".zip"));
   if (!assetToDownload) {
     setStatus({
       status: "error",
@@ -127,6 +148,17 @@ export async function ensureLatestBeyond20(): Promise<string | null> {
 
   const AdmZip = (await import("adm-zip")).default;
   const zip = new AdmZip(zipBuffer);
+
+  // Zip slip protection: reject any entry whose resolved path escapes extensionDir.
+  const resolvedRoot = resolve(extensionDir);
+  for (const entry of zip.getEntries()) {
+    const entryPath = resolve(extensionDir, entry.entryName);
+    if (!entryPath.startsWith(resolvedRoot + "/") && entryPath !== resolvedRoot) {
+      setStatus({ status: "error", error: `Zip entry escapes target directory: ${entry.entryName}` });
+      return null;
+    }
+  }
+
   zip.extractAllTo(extensionDir, true);
 
   await fs.writeFile(versionFile, latestTag, "utf-8");

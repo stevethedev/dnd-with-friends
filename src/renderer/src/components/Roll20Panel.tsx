@@ -14,7 +14,7 @@ export function Roll20Panel(): React.JSX.Element {
   }
 
   return (
-    <div className="toolbar__panel toolbar__panel--right">
+    <div className="toolbar__panel">
       <span className="toolbar__panel-label">Roll20</span>
       <input
         className="toolbar__url-input"
