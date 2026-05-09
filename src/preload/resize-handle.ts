@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
-import { IPC_CHANNELS } from "../shared/ipcChannels";
+import { IpcChannels } from "../shared/ipcChannels";
 
 contextBridge.exposeInMainWorld("resizeAPI", {
   onInit: (
@@ -12,21 +12,21 @@ contextBridge.exposeInMainWorld("resizeAPI", {
     ): void => {
       cb(panelId, currentWidth);
     };
-    ipcRenderer.on(IPC_CHANNELS.RESIZE_HANDLE_INIT, handler);
+    ipcRenderer.on(IpcChannels.ResizeHandleInit, handler);
     return () =>
-      ipcRenderer.removeListener(IPC_CHANNELS.RESIZE_HANDLE_INIT, handler);
+      ipcRenderer.removeListener(IpcChannels.ResizeHandleInit, handler);
   },
 
   /** Tell main to expand this view to full-window width so mousemove covers everything. */
   startDrag: (): void => {
-    ipcRenderer.send(IPC_CHANNELS.RESIZE_DRAG_START);
+    ipcRenderer.send(IpcChannels.ResizeDragStart);
   },
 
   resize: (panelId: string, newWidth: number): void => {
-    ipcRenderer.send(IPC_CHANNELS.PANEL_RESIZE, panelId, newWidth);
+    ipcRenderer.send(IpcChannels.PanelResize, panelId, newWidth);
   },
 
   endDrag: (panelId: string, finalWidth: number): void => {
-    ipcRenderer.send(IPC_CHANNELS.RESIZE_DRAG_END, panelId, finalWidth);
+    ipcRenderer.send(IpcChannels.ResizeDragEnd, panelId, finalWidth);
   },
 });

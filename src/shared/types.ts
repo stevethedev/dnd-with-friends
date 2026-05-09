@@ -25,7 +25,7 @@ export interface PanelConfig {
 }
 
 /**
- * Serialisable panel descriptor sent to the renderer via IPC.
+ * Serializable panel descriptor sent to the renderer via IPC.
  * Does not contain any Electron objects; safe to cross the context bridge.
  */
 export interface PanelInfo {

@@ -1,7 +1,7 @@
 import { BrowserWindow, WebContentsView, session, shell } from "electron";
 import { join } from "path";
 import { store } from "./store";
-import { IPC_CHANNELS } from "../shared/ipcChannels";
+import { IpcChannels } from "../shared/ipcChannels";
 import { pushEvent } from "./ipc/emitter";
 import { isHttpUrl } from "../shared/utils";
 import {
@@ -252,7 +252,7 @@ export function endPanelDrag(id: string, rawWidth: number): void {
     state.view.setBounds({ x: 0, y: TOOLBAR_HEIGHT, width: w, height: panelH });
     repositionResizeHandle(w, panelH);
     // Tell handle renderer the new width for next drag
-    resizeHandleView?.webContents.send(IPC_CHANNELS.RESIZE_HANDLE_INIT, id, w);
+    resizeHandleView?.webContents.send(IpcChannels.ResizeHandleInit, id, w);
   }
 
   savePanelConfigs();
@@ -531,7 +531,7 @@ function animatePanel(id: string, open: boolean): void {
 
         if (open) {
           resizeHandleView?.webContents.send(
-            IPC_CHANNELS.RESIZE_HANDLE_INIT,
+            IpcChannels.ResizeHandleInit,
             id,
             panelW,
           );
