@@ -9,5 +9,6 @@
     "src/renderer/src/types/electron-api.d.ts",
     "electron.vite.config.ts"
   ],
-  "project": ["src/**/*.{ts,tsx,js,jsx}"]
+  "project": ["src/**/*.{ts,tsx,js,jsx}"],
+  "ignoreDependencies": ["@emnapi/core", "@emnapi/runtime"]
 }

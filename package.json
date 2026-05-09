@@ -19,6 +19,8 @@
     "fix:lint": "eslint --fix .",
     "icons": "icon-gen -i ./resources/icon.png -o ./resources/icons --ico --ico-name=icon --icns --icns-name icon --favicon --favicon-name icon --favicon-png-sizes 16,32,128,256,512,1024",
     "preview": "electron-vite preview",
+    "publish": "electron-builder --publish=always",
+    "prepublish": "npm-run-all icons build",
     "package": "electron-builder",
     "prepackage": "npm run build",
     "package:win": "electron-builder --win",
