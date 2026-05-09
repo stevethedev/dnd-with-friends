@@ -98,7 +98,10 @@ function safeOpenExternal(url: string): void {
   if (isHttpUrl(url)) {
     void shell.openExternal(url);
   } else {
-    console.warn("[Security] Blocked non-http(s) URL from shell.openExternal:", url);
+    console.warn(
+      "[Security] Blocked non-http(s) URL from shell.openExternal:",
+      url,
+    );
   }
 }
 
@@ -281,8 +284,12 @@ export function createWindowWithPanels(): BrowserWindow {
   setupRendererDiagnostics(win);
   layoutRoll20();
   win.on("resize", onWindowResize);
-  win.on("maximize",   () => pushEvent(win, "window.maximizeChanged", true));
-  win.on("unmaximize", () => pushEvent(win, "window.maximizeChanged", false));
+  win.on("maximize", () => {
+    pushEvent(win, "window.maximizeChanged", true);
+  });
+  win.on("unmaximize", () => {
+    pushEvent(win, "window.maximizeChanged", false);
+  });
   void win.loadFile(join(__dirname, "../renderer/index.html"));
 
   win.on("closed", () => {
@@ -377,7 +384,10 @@ function createResizeHandleView(): WebContentsView {
 function loadPersistedPanels(win: BrowserWindow): void {
   for (const config of store.get("panels")) {
     if (!isHttpUrl(config.url)) {
-      console.warn("[Security] Skipping persisted panel with invalid URL:", config.id);
+      console.warn(
+        "[Security] Skipping persisted panel with invalid URL:",
+        config.id,
+      );
       continue;
     }
     const view = createPanelView(config.id, config.url);

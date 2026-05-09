@@ -26,8 +26,13 @@ export function registerHandlers(handlers: HandlerMap): void {
         console.error(`[IPC] Handler error on ${channel}:`, err);
         const message = app.isPackaged
           ? "An unexpected error occurred"
-          : (err instanceof Error ? err.message : String(err));
-        return { ok: false, error: { code: "HANDLER_ERROR", channel, message } };
+          : err instanceof Error
+            ? err.message
+            : String(err);
+        return {
+          ok: false,
+          error: { code: "HANDLER_ERROR", channel, message },
+        };
       }
     });
   }

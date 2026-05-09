@@ -13,5 +13,9 @@
     "noImplicitOverride": true,
     "types": ["vite/client"]
   },
-  "include": ["src/renderer/src/**/*", "src/renderer/lib/**/*", "src/shared/**/*"]
+  "include": [
+    "src/renderer/src/**/*",
+    "src/renderer/lib/**/*",
+    "src/shared/**/*"
+  ]
 }

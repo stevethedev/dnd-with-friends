@@ -11,29 +11,41 @@ export type IpcResult<T> =
   | { ok: true; data: T }
   | { ok: false; error: SerializedError };
 
-export class IpcError {
-  static fromZod(channel: string, err: ZodError): SerializedError {
-    return {
+export class IpcError implements SerializedError {
+  static fromZod(channel: string, err: ZodError): IpcError {
+    return new IpcError({
       code: "VALIDATION_ERROR",
       channel,
       message: err.message,
       details: err.issues,
-    };
+    });
   }
 
   static serialize(err: unknown, channel: string): SerializedError {
-    return {
+    return new IpcError({
       code: "HANDLER_ERROR",
       channel,
       message: err instanceof Error ? err.message : String(err),
-    };
+    });
   }
 
   static unknown(channel: string): SerializedError {
-    return {
+    return new IpcError({
       code: "UNKNOWN_CHANNEL",
       channel,
       message: `Unknown channel: ${channel}`,
-    };
+    });
+  }
+
+  readonly code: string;
+  readonly channel: string;
+  readonly message: string;
+  readonly details?: unknown;
+
+  constructor(error: SerializedError) {
+    this.code = error.code;
+    this.channel = error.channel;
+    this.message = error.message;
+    this.details = error.details;
   }
 }

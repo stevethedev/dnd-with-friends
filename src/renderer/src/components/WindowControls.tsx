@@ -2,7 +2,7 @@ import React from "react";
 import { ipc } from "../../lib/ipc/client";
 import { useIpcState } from "../../lib/ipc/hooks";
 
-const platform = window.__platform;
+const platform: string = window.__platform;
 
 function MinimizeSvg(): React.JSX.Element {
   return (

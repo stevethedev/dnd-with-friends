@@ -16,8 +16,7 @@ function cmd<K extends InvokeChannel>(channel: K): InvokeMethod<K> {
 }
 
 function evt<K extends ObserveChannel>(channel: K): ObserveMethod<K> {
-  return (handler) =>
-    getBridge().on(channel, handler as (p: unknown) => void);
+  return (handler) => getBridge().on(channel, handler as (p: unknown) => void);
 }
 
 export const ipc = {
@@ -41,10 +40,10 @@ export const ipc = {
     onStatusUpdated: evt("beyond20.statusUpdated"),
   },
   window: {
-    minimize:          cmd("window.minimize"),
-    maximize:          cmd("window.maximize"),
-    close:             cmd("window.close"),
-    isMaximized:       cmd("window.isMaximized"),
+    minimize: cmd("window.minimize"),
+    maximize: cmd("window.maximize"),
+    close: cmd("window.close"),
+    isMaximized: cmd("window.isMaximized"),
     onMaximizeChanged: evt("window.maximizeChanged"),
   },
 } as const;

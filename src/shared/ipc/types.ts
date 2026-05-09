@@ -16,17 +16,17 @@ export type OutputOf<K extends InvokeChannel> = z.infer<
 >;
 export type PayloadOf<K extends ObserveChannel> = z.infer<ObserveChannels[K]>;
 
-export type InvokeMethod<K extends InvokeChannel> = InputOf<K> extends void
-  ? () => Promise<IpcResult<OutputOf<K>>>
-  : (input: InputOf<K>) => Promise<IpcResult<OutputOf<K>>>;
+export type InvokeMethod<K extends InvokeChannel> = (
+  input: InputOf<K>,
+) => Promise<IpcResult<OutputOf<K>>>;
 
 export type ObserveMethod<K extends ObserveChannel> = (
   handler: (payload: PayloadOf<K>) => void,
 ) => () => void;
 
-export type HandlerFn<K extends InvokeChannel> = InputOf<K> extends void
-  ? () => Promise<OutputOf<K>>
-  : (input: InputOf<K>) => Promise<OutputOf<K>>;
+export type HandlerFn<K extends InvokeChannel> = (
+  input: InputOf<K>,
+) => OutputOf<K>;
 
 /** Exhaustive map — TypeScript errors if any declared channel is missing. */
 export type HandlerMap = { [K in InvokeChannel]: HandlerFn<K> };

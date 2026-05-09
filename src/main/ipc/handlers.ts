@@ -1,4 +1,5 @@
 import { ipcMain } from "electron";
+import type { Beyond20Status, PanelInfo } from "../../shared/types";
 import { store } from "../store";
 import { DEFAULT_PANEL_WIDTH } from "../../shared/constants";
 import { IPC_CHANNELS } from "../../shared/ipcChannels";
@@ -25,37 +26,41 @@ export function createHandlers(): HandlerMap {
   nextIdCounter = store.get("nextPanelId");
 
   return {
-    "panel.list": async () => getPanelInfoList(),
-    "panel.create": async ({ url }) => {
+    "panel.list": (): PanelInfo[] => getPanelInfoList(),
+    "panel.create": ({ url }: { url: string }): PanelInfo => {
       const id = `panel-${nextIdCounter++}`;
       store.set("nextPanelId", nextIdCounter);
       return addPanel({ id, url, width: DEFAULT_PANEL_WIDTH });
     },
-    "panel.remove": async ({ id }) => {
+    "panel.remove": ({ id }: { id: string }): PanelInfo[] => {
       removePanel(id);
       return getPanelInfoList();
     },
-    "panel.toggle": async ({ id }) => togglePanel(id),
-    "panel.navigate": async ({ id, url }) => {
+    "panel.toggle": ({ id }: { id: string }): PanelInfo[] => togglePanel(id),
+    "panel.navigate": ({ id, url }: { id: string; url: string }): void => {
       navigatePanel(id, url);
     },
-    "panel.getUrl": async ({ id }) => getPanelUrl(id),
-    "roll20.navigate": async ({ url }) => {
+    "panel.getUrl": ({ id }: { id: string }): string => getPanelUrl(id),
+    "roll20.navigate": ({ url }: { url: string }): void => {
       void getRoll20View().webContents.loadURL(url);
     },
-    "roll20.getUrl": async () => getRoll20View().webContents.getURL(),
-    "beyond20.getStatus": async () => getBeyond20Status(),
-    "window.minimize": async () => {
+    "roll20.getUrl": (): string => getRoll20View().webContents.getURL(),
+    "beyond20.getStatus": (): Beyond20Status => getBeyond20Status(),
+    "window.minimize": (): void => {
       getMainWindow().minimize();
     },
-    "window.maximize": async () => {
+    "window.maximize": (): void => {
       const w = getMainWindow();
-      w.isMaximized() ? w.unmaximize() : w.maximize();
+      if (w.isMaximized()) {
+        w.unmaximize();
+      } else {
+        w.maximize();
+      }
     },
-    "window.close": async () => {
+    "window.close": (): void => {
       getMainWindow().close();
     },
-    "window.isMaximized": async () => getMainWindow().isMaximized(),
+    "window.isMaximized": (): boolean => getMainWindow().isMaximized(),
   };
 }
 

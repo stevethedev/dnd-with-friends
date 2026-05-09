@@ -300,11 +300,19 @@ body {
   transition: filter 0.1s;
 }
 
-.wc-mac__btn--close { background: #ff5f57; }
-.wc-mac__btn--min   { background: #febc2e; }
-.wc-mac__btn--max   { background: #28c840; }
+.wc-mac__btn--close {
+  background: #ff5f57;
+}
+.wc-mac__btn--min {
+  background: #febc2e;
+}
+.wc-mac__btn--max {
+  background: #28c840;
+}
 
-.wc-mac__btn:hover { filter: brightness(0.85); }
+.wc-mac__btn:hover {
+  filter: brightness(0.85);
+}
 
 .wc-mac:hover .wc-mac__btn--close::before {
   content: "✕";

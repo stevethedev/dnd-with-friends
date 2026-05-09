@@ -62,7 +62,10 @@ export const API = {
       input: z.object({ id: z.string().min(1) }),
       output: z.string(),
     },
-    "roll20.navigate": { input: z.object({ url: HttpUrlSchema }), output: z.void() },
+    "roll20.navigate": {
+      input: z.object({ url: HttpUrlSchema }),
+      output: z.void(),
+    },
     "roll20.getUrl": { input: z.void(), output: z.string() },
     "beyond20.getStatus": { input: z.void(), output: Beyond20StatusSchema },
     "window.minimize": { input: z.void(), output: z.void() },

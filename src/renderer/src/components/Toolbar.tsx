@@ -7,7 +7,7 @@ import { usePanels } from "../hooks/usePanels";
 import { ipc } from "../../lib/ipc/client";
 import { DEFAULT_DND_URL } from "../../../shared/constants";
 
-const platform = window.__platform;
+const platform: string = window.__platform;
 
 export function Toolbar(): React.JSX.Element {
   const { panels, toggle, createPanel, removePanel, navigatePanel } =

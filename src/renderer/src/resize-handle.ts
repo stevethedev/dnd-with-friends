@@ -7,13 +7,13 @@ let startWidth = 0;
 const handle = document.getElementById("handle");
 if (!handle) throw new Error("Resize handle not found");
 
-window.resizeAPI.onInit(function (pid, width) {
+window.resizeAPI.onInit((pid: string, width: number) => {
   panelId = pid;
   panelWidth = width;
 });
 
 // ── Drag start ──────────────────────────────────────────────────────────────
-handle.addEventListener("mousedown", function (e) {
+handle.addEventListener("mousedown", (e: MouseEvent) => {
   if (e.button !== 0 || !panelId) return;
   isDragging = true;
   startScreenX = e.screenX;
@@ -21,7 +21,7 @@ handle.addEventListener("mousedown", function (e) {
 
   // Pin the handle bar at its current screen position so it stays
   // visible when the view expands to cover the full window.
-  handle.style.left = startWidth + "px";
+  handle.style.left = `${startWidth}px`;
 
   document.body.classList.add("dragging");
   window.resizeAPI.startDrag();
@@ -29,18 +29,22 @@ handle.addEventListener("mousedown", function (e) {
 });
 
 // ── Drag move ───────────────────────────────────────────────────────────────
-document.addEventListener("mousemove", function (e) {
-  if (!isDragging || !panelId) return;
+document.addEventListener("mousemove", (e: MouseEvent) => {
+  if (!isDragging || !panelId) {
+    return;
+  }
   const delta = e.screenX - startScreenX;
   const newWidth = Math.max(MIN_PANEL_WIDTH, startWidth + delta);
   // Keep the visual bar tracking the drag position
-  handle.style.left = newWidth + "px";
+  handle.style.left = `${newWidth}px`;
   window.resizeAPI.resize(panelId, newWidth);
 });
 
 // ── Drag end ────────────────────────────────────────────────────────────────
-document.addEventListener("mouseup", function (e) {
-  if (!isDragging || e.button !== 0 || !panelId) return;
+document.addEventListener("mouseup", (e: MouseEvent) => {
+  if (!isDragging || e.button !== 0 || !panelId) {
+    return;
+  }
   isDragging = false;
   document.body.classList.remove("dragging");
 

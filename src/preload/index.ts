@@ -1,9 +1,10 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { ElectronBridge } from "../shared/ipc/bridge-types";
 import { INVOKE_CHANNELS, OBSERVE_CHANNELS } from "../shared/ipc/api";
+import type { IpcResult } from "../shared/ipc/errors";
 
 const bridge: ElectronBridge = {
-  invoke(channel, input) {
+  invoke(channel: string, input: unknown): Promise<IpcResult<unknown>> {
     if (!INVOKE_CHANNELS.has(channel)) {
       return Promise.resolve({
         ok: false,
@@ -17,7 +18,7 @@ const bridge: ElectronBridge = {
     return ipcRenderer.invoke(channel, input);
   },
 
-  on(channel, handler) {
+  on(channel: string, handler: (payload: unknown) => void): () => void {
     if (!OBSERVE_CHANNELS.has(channel)) return () => {};
     const listener = (
       _e: Electron.IpcRendererEvent,

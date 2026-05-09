@@ -8,7 +8,13 @@ export function useIpcEvent<T>(
 ): void {
   const ref = useRef(handler);
   ref.current = handler;
-  useEffect(() => subscribe((p) => ref.current(p)), [subscribe]);
+  useEffect(
+    () =>
+      subscribe((p) => {
+        ref.current(p);
+      }),
+    [subscribe],
+  );
 }
 
 /**
@@ -28,8 +34,6 @@ export function useIpcState<T>(
       })
       .catch(console.error);
     return subscribe(setValue);
-    // subscribe and query are stable module-level references
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return value;
