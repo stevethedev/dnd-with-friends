@@ -24,3 +24,6 @@ export const BEYOND20_GITHUB_API =
 /** Default URLs loaded on first launch */
 export const DEFAULT_DND_URL = "https://www.dndbeyond.com";
 export const DEFAULT_ROLL20_URL = "https://roll20.net";
+
+/** ID of the default D&D Beyond panel created on first launch */
+export const DEFAULT_PANEL_ID = "dnd";

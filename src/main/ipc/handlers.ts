@@ -28,8 +28,11 @@ export function createHandlers(): HandlerMap {
   return {
     "panel.list": (): PanelInfo[] => getPanelInfoList(),
     "panel.create": ({ url }: { url: string }): PanelInfo => {
-      const id = `panel-${nextIdCounter++}`;
-      store.set("nextPanelId", nextIdCounter);
+      const id = `panel-${nextIdCounter}`;
+      // Persist the incremented counter BEFORE creating the panel so that a
+      // crash between the two writes can never produce a duplicate panel ID on
+      // the next launch (duplicate IDs would throw on startup).
+      store.set("nextPanelId", ++nextIdCounter);
       return addPanel({ id, url, width: DEFAULT_PANEL_WIDTH });
     },
     "panel.remove": ({ id }: { id: string }): PanelInfo[] => {

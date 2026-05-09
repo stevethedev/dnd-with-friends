@@ -1,5 +1,6 @@
 import React from "react";
 import type { PanelInfo } from "../../../shared/types";
+import { DEFAULT_PANEL_ID } from "../../../shared/constants";
 
 interface Props {
   panel: PanelInfo;
@@ -25,7 +26,7 @@ export function PanelButton({
   onToggle,
   onRemove,
 }: Props): React.JSX.Element {
-  const isDefaultDnd = panel.id === "dnd";
+  const isDefaultDnd = panel.id === DEFAULT_PANEL_ID;
 
   return (
     <div className="toolbar__panel-btn-group">

@@ -45,7 +45,10 @@ export function getBeyond20Status(): Beyond20Status {
 }
 
 function setStatus(update: Partial<Beyond20Status>): void {
-  currentStatus = { ...currentStatus, ...update };
+  const next = { ...currentStatus, ...update };
+  // Don't carry a stale error string into non-error states
+  if (next.status !== "error") delete next.error;
+  currentStatus = next;
   statusListener?.(currentStatus);
 }
 
@@ -75,6 +78,7 @@ export async function ensureLatestBeyond20(): Promise<string | null> {
   try {
     const response = await fetch(BEYOND20_GITHUB_API, {
       headers: { Accept: "application/vnd.github+json" },
+      signal: AbortSignal.timeout(10_000),
     });
     if (!response.ok)
       throw new Error(`GitHub API returned HTTP ${response.status}`);
@@ -124,7 +128,9 @@ export async function ensureLatestBeyond20(): Promise<string | null> {
 
   let zipBuffer: Buffer;
   try {
-    const zipResponse = await fetch(assetToDownload.browser_download_url);
+    const zipResponse = await fetch(assetToDownload.browser_download_url, {
+      signal: AbortSignal.timeout(120_000),
+    });
     if (!zipResponse.ok)
       throw new Error(`Download failed: HTTP ${zipResponse.status}`);
     zipBuffer = Buffer.from(await zipResponse.arrayBuffer());
@@ -189,8 +195,20 @@ async function patchForElectron(extensionDir: string): Promise<void> {
 
 async function patchManifest(extensionDir: string): Promise<void> {
   const manifestPath = join(extensionDir, "manifest.json");
-  const raw = await fs.readFile(manifestPath, "utf-8");
-  const manifest = JSON.parse(raw) as Record<string, unknown>;
+  let raw: string;
+  try {
+    raw = await fs.readFile(manifestPath, "utf-8");
+  } catch {
+    console.warn("[Beyond20] manifest.json not found; skipping manifest patch");
+    return;
+  }
+  let manifest: Record<string, unknown>;
+  try {
+    manifest = JSON.parse(raw) as Record<string, unknown>;
+  } catch {
+    console.warn("[Beyond20] manifest.json is malformed; skipping manifest patch");
+    return;
+  }
   let dirty = false;
 
   // 1. Convert MV3 service_worker → MV2 background scripts

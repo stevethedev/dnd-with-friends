@@ -146,7 +146,12 @@ export function addPanel(config: PanelConfig): PanelInfo {
 
 export function removePanel(id: string): void {
   if (id === activePanelId) {
-    closeActivePanel();
+    // Don't run the close animation — the view is about to be destroyed.
+    // Immediately reset active state instead to avoid the animation timer
+    // calling setBounds on a closed WebContentsView.
+    activePanelId = null;
+    clearAnimationTimer();
+    hideResizeHandle();
   }
   const state = panelMap.get(id);
   if (!state) return;
@@ -156,6 +161,7 @@ export function removePanel(id: string): void {
   }
   state.view.webContents.close();
   savePanelConfigs();
+  sendPanelListUpdate();
 }
 
 export function togglePanel(id: string): PanelInfo[] {
