@@ -2,7 +2,7 @@
   "name": "dnd-with-friends",
   "version": "0.1.0",
   "description": "Desktop app hosting D&D Beyond and Roll20 with Beyond20 integration",
-  "repository": "https://github.com/stevenmjimenez/dnd-with-friends",
+  "repository": "https://github.com/stevethedev/dnd-with-friends",
   "main": "./out/main/index.mjs",
   "scripts": {
     "start": "electron .",
