@@ -2,9 +2,9 @@ name: Version
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
 
-# Serialise runs so concurrent pushes don't race on the Version PR
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
 permissions:
@@ -15,6 +15,13 @@ jobs:
   version:
     runs-on: ubuntu-latest
     steps:
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.RELEASEBOT_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASEBOT_PRIVATE_KEY }}
+
       - uses: actions/checkout@v4
         with:
           # Full history so changeset can read the log for changelog entries
@@ -33,7 +40,7 @@ jobs:
         with:
           version: npm run changeset:version
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
 
       # Create a vX.Y.Z tag only when this commit actually bumped the version field in
       # package.json — i.e. the merge of a Version Packages PR.  Gating on the diff
