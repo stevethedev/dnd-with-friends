@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { WindowControls } from "./WindowControls";
 import { Beyond20Status } from "./Beyond20Status";
 import { Roll20Panel } from "./Roll20Panel";
-import { PanelButton } from "./PanelButton";
+import { MinimizedPanelTile } from "./MinimizedPanelTile";
 import { UrlBar } from "./UrlBar";
 import { usePanels } from "../hooks/usePanels";
 import { ipc } from "../../lib/ipc/client";
@@ -11,22 +11,29 @@ import { DEFAULT_DND_URL } from "../../../shared/constants";
 const platform: string = window.__platform;
 
 export function Toolbar(): React.JSX.Element {
-  const { panels, toggle, createPanel, removePanel, navigatePanel } =
-    usePanels();
-  const activePanel = panels.find((p) => p.isOpen) ?? null;
+  const {
+    panels,
+    focusedPanel,
+    restorePanel,
+    createPanel,
+    removePanel,
+    navigatePanel,
+  } = usePanels();
+
+  const minimizedPanels = panels.filter((p) => p.state === "minimized");
 
   const [urlInput, setUrlInput] = useState("");
 
-  // Sync the URL input with the active panel's live URL.
+  // Sync the URL input with the focused panel's live URL.
   // Subscribe first, then fetch the current value — this ordering prevents a
   // race where a navigation completes between the fetch call and the subscription
   // setup, causing the input to show a stale URL.
   useEffect(() => {
-    if (!activePanel) {
+    if (!focusedPanel) {
       setUrlInput("");
       return;
     }
-    const panelId = activePanel.id;
+    const panelId = focusedPanel.id;
     const unsub = ipc.panels.onUrlChanged(({ id, url }) => {
       if (id === panelId) setUrlInput(url);
     });
@@ -37,29 +44,29 @@ export function Toolbar(): React.JSX.Element {
       })
       .catch(console.error);
     return unsub;
-  }, [activePanel?.id]);
+  }, [focusedPanel?.id]);
 
-  function handleAddPanel(): void {
+  const handleAddPanel = useCallback((): void => {
     createPanel(DEFAULT_DND_URL);
-  }
+  }, [createPanel]);
 
-  function handleGo(): void {
-    if (!activePanel) return;
+  const handleGo = useCallback((): void => {
+    if (!focusedPanel) return;
     const url = urlInput.trim();
     if (!url) return;
-    navigatePanel(activePanel.id, url);
-  }
+    navigatePanel(focusedPanel.id, url);
+  }, [focusedPanel, urlInput, navigatePanel]);
 
   return (
     <div className="toolbar" data-platform={platform}>
       {platform === "darwin" && <WindowControls />}
 
-      {/* Panel toggle buttons */}
-      {panels.map((panel) => (
-        <PanelButton
+      {/* Minimized panel tiles */}
+      {minimizedPanels.map((panel) => (
+        <MinimizedPanelTile
           key={panel.id}
           panel={panel}
-          onToggle={toggle}
+          onRestore={restorePanel}
           onRemove={removePanel}
         />
       ))}
@@ -74,14 +81,14 @@ export function Toolbar(): React.JSX.Element {
         +
       </button>
 
-      {/* URL bar for active panel */}
-      {activePanel && (
+      {/* URL bar for focused (top z-index) panel */}
+      {focusedPanel && (
         <div className="toolbar__active-url">
           <UrlBar
             value={urlInput}
             onChange={setUrlInput}
             onGo={handleGo}
-            ariaLabel={`URL for ${activePanel.title}`}
+            ariaLabel={`URL for ${focusedPanel.title}`}
           />
         </div>
       )}

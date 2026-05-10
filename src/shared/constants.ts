@@ -1,15 +1,17 @@
 /** Height of the toolbar in pixels. Must match .toolbar height in toolbar.css */
 export const TOOLBAR_HEIGHT = 48;
 
-/** Width of the resize handle WebContentsView in pixels */
-export const RESIZE_HANDLE_WIDTH = 8;
+/** Height of the floating panel title bar. Must match .floating-panel__titlebar height in toolbar.css */
+export const TITLE_BAR_HEIGHT = 32;
 
-/** Panel width constraints */
+/** Panel width/height constraints */
 export const MIN_PANEL_WIDTH = 320;
+export const MIN_PANEL_HEIGHT = 200;
 export const MAX_PANEL_WIDTH_FRACTION = 0.8; // panels may not exceed 80% of window width
+/** Minimum horizontal pixels of a panel title bar that must remain on-screen so the user can grab it. */
+export const PANEL_MIN_GRAB_PX = 80;
 export const DEFAULT_PANEL_WIDTH = 520; // initial width for newly-created panels
-/** Extra pixels used to hide a panel fully off the left edge of the screen */
-export const PANEL_OFFSCREEN_MARGIN = 20;
+export const DEFAULT_PANEL_HEIGHT = 600; // initial height for newly-created panels
 
 /** BrowserWindow initial and minimum dimensions */
 export const WINDOW_DEFAULT_WIDTH = 1600;

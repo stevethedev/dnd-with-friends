@@ -10,8 +10,13 @@ const PanelInfoSchema = z.object({
   id: z.string(),
   title: z.string(),
   url: z.string(),
-  isOpen: z.boolean(),
+  state: z.enum(["open", "minimized"]),
   width: z.number(),
+  height: z.number(),
+  x: z.number(),
+  y: z.number(),
+  zIndex: z.number(),
+  favicon: z.string().nullable(),
 });
 
 // One variant per status value so z.discriminatedUnion can use O(1) lookup.
@@ -52,9 +57,35 @@ export const API = {
       input: z.object({ id: z.string().min(1) }),
       output: z.array(PanelInfoSchema),
     },
-    "panel.toggle": {
+    "panel.minimize": {
       input: z.object({ id: z.string().min(1) }),
       output: z.array(PanelInfoSchema),
+    },
+    "panel.restore": {
+      input: z.object({ id: z.string().min(1) }),
+      output: z.array(PanelInfoSchema),
+    },
+    "panel.focus": {
+      input: z.object({ id: z.string().min(1) }),
+      output: z.array(PanelInfoSchema),
+    },
+    "panel.move": {
+      input: z.object({
+        id: z.string().min(1),
+        x: z.number(),
+        y: z.number(),
+        final: z.boolean().optional(),
+      }),
+      output: z.void(),
+    },
+    "panel.resize": {
+      input: z.object({
+        id: z.string().min(1),
+        width: z.number(),
+        height: z.number(),
+        final: z.boolean().optional(),
+      }),
+      output: z.void(),
     },
     "panel.navigate": {
       input: z.object({ id: z.string().min(1), url: HttpUrlSchema }),
@@ -74,6 +105,10 @@ export const API = {
     "window.maximize": { input: z.void(), output: z.void() },
     "window.close": { input: z.void(), output: z.void() },
     "window.isMaximized": { input: z.void(), output: z.boolean() },
+    "overlay.setIgnoreMouseEvents": {
+      input: z.object({ ignore: z.boolean() }),
+      output: z.void(),
+    },
   },
   observe: {
     "panel.listUpdated": z.array(PanelInfoSchema),
