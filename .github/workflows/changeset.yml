@@ -26,6 +26,7 @@ jobs:
         with:
           # Full history so changeset can read the log for changelog entries
           fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
 
       - uses: actions/setup-node@v4
         with:
