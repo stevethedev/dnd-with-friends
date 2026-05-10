@@ -1,6 +1,6 @@
 {
   "name": "dnd-with-friends",
-  "version": "0.1.0",
+  "version": "0.1.7",
   "description": "Desktop app hosting D&D Beyond and Roll20 with Beyond20 integration",
   "repository": "https://github.com/stevethedev/dnd-with-friends",
   "main": "./out/main/index.mjs",
