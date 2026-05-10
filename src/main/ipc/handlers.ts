@@ -2,7 +2,7 @@ import { ipcMain } from "electron";
 import type { Beyond20Status, PanelInfo } from "../../shared/types";
 import { store } from "../store";
 import { DEFAULT_PANEL_WIDTH } from "../../shared/constants";
-import { IPC_CHANNELS } from "../../shared/ipcChannels";
+import { IpcChannels } from "../../shared/ipcChannels";
 import {
   getRoll20View,
   getPanelInfoList,
@@ -76,18 +76,18 @@ export function registerResizeHandlers(): void {
   }
 
   ipcMain.on(
-    IPC_CHANNELS.PANEL_RESIZE,
+    IpcChannels.PanelResize,
     (e, panelId: string, newWidth: number) => {
       if (!isResizeSender(e.sender)) return;
       updatePanelWidth(panelId, newWidth);
     },
   );
-  ipcMain.on(IPC_CHANNELS.RESIZE_DRAG_START, (e) => {
+  ipcMain.on(IpcChannels.ResizeDragStart, (e) => {
     if (!isResizeSender(e.sender)) return;
     startPanelDrag();
   });
   ipcMain.on(
-    IPC_CHANNELS.RESIZE_DRAG_END,
+    IpcChannels.ResizeDragEnd,
     (e, panelId: string, finalWidth: number) => {
       if (!isResizeSender(e.sender)) return;
       endPanelDrag(panelId, finalWidth);

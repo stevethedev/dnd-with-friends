@@ -68,7 +68,7 @@ export function Toolbar(): React.JSX.Element {
       <button
         className="toolbar__add-panel"
         onClick={handleAddPanel}
-        title="Add a new D&D Beyond panel"
+        title="Add a new panel"
         aria-label="Add panel"
       >
         +
@@ -87,6 +87,7 @@ export function Toolbar(): React.JSX.Element {
       )}
 
       <Beyond20Status />
+      <div className="toolbar__spacer" />
       <Roll20Panel />
 
       {platform !== "darwin" && <WindowControls />}
