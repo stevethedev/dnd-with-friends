@@ -157,11 +157,16 @@ body {
   -webkit-app-region: no-drag;
 }
 
+.toolbar__spacer {
+  visibility: hidden;
+  display: flex;
+  flex: 1;
+}
+
 .toolbar__panel {
   display: flex;
   align-items: center;
   gap: 6px;
-  flex: 1;
   min-width: 0;
   justify-content: flex-end;
   /* eslint-disable-next-line css/no-invalid-properties */

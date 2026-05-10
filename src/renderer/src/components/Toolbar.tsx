@@ -87,6 +87,7 @@ export function Toolbar(): React.JSX.Element {
       )}
 
       <Beyond20Status />
+      <div className="toolbar__spacer" />
       <Roll20Panel />
 
       {platform !== "darwin" && <WindowControls />}
