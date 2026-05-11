@@ -35,19 +35,25 @@ export interface Roll20Bridge {
 }
 
 const bridge: Roll20Bridge = {
-  openPopout(url, windowName, features) {
-    return ipcRenderer.sendSync("roll20.openPopout", { url, windowName, features }) as string;
+  openPopout(url: string, windowName: string, features: string): string {
+    return ipcRenderer.sendSync("roll20.openPopout", {
+      url,
+      windowName,
+      features,
+    }) as string;
   },
 
-  sendToPanel(panelId, data) {
+  sendToPanel(panelId: string, data: unknown): void {
     ipcRenderer.send("roll20.sendToPanel", { panelId, data });
   },
 
-  closePanel(panelId) {
+  closePanel(panelId: string): void {
     ipcRenderer.send("roll20.closePanel", { panelId });
   },
 
-  onPanelMessage(handler) {
+  onPanelMessage(
+    handler: (panelId: string, data: unknown) => void,
+  ): () => void {
     const listener = (
       _e: Electron.IpcRendererEvent,
       payload: { panelId: string; data: unknown },
@@ -55,7 +61,8 @@ const bridge: Roll20Bridge = {
       handler(payload.panelId, payload.data);
     };
     ipcRenderer.on("roll20.panelMessage", listener);
-    return () => ipcRenderer.removeListener("roll20.panelMessage", listener);
+    return () =>
+      void ipcRenderer.removeListener("roll20.panelMessage", listener);
   },
 };
 

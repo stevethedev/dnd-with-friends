@@ -1,4 +1,4 @@
-import { BrowserWindow, WebContentsView, net, session, shell } from "electron";
+import { BrowserWindow, WebContentsView, net, session } from "electron";
 import { join } from "path";
 import { store } from "./store";
 import { pushEvent } from "./ipc/emitter";
@@ -182,11 +182,15 @@ function roll20ContentViewWebPrefs(): Electron.WebPreferences {
  * windowName is passed via additionalArguments so the preload can set
  * window.name synchronously (before any page script reads it).
  */
-function roll20PopoutPanelWebPrefs(windowName?: string): Electron.WebPreferences {
+function roll20PopoutPanelWebPrefs(
+  windowName?: string,
+): Electron.WebPreferences {
   return {
     partition: ROLL20_PARTITION,
     preload: join(__dirname, "../preload/roll20-popout.js"),
-    additionalArguments: windowName ? [`--roll20-window-name=${windowName}`] : [],
+    additionalArguments: windowName
+      ? [`--roll20-window-name=${windowName}`]
+      : [],
     nodeIntegration: false,
     contextIsolation: false,
     sandbox: true,
@@ -209,7 +213,10 @@ function roll20PopoutPanelWebPrefs(windowName?: string): Electron.WebPreferences
  * ready to receive postMessage data — the standard mechanism popup-based SPAs
  * use to delay sending init data until the popup is loaded.
  */
-export function createRoll20PopoutPanel(url: string, windowName = ""): PanelInfo {
+export function createRoll20PopoutPanel(
+  url: string,
+  windowName: string = "",
+): PanelInfo {
   const counter = store.get("nextPanelId");
   store.set("nextPanelId", counter + 1);
   const offset = (panelMap.size % 6) * 30;
@@ -234,11 +241,16 @@ export function createRoll20PopoutPanel(url: string, windowName = ""): PanelInfo
   if (state) {
     // did-finish-load: page + all sub-resources are done.
     state.view.webContents.on("did-finish-load", () => {
-      console.log(`[Panel(${info.id})] did-finish-load at`, state.view.webContents.getURL());
+      console.log(
+        `[Panel(${info.id})] did-finish-load at`,
+        state.view.webContents.getURL(),
+      );
       // Flush any postMessages Roll20 sent before the panel finished loading.
       const queue = pendingPanelMessages.get(info.id);
       if (queue && queue.length > 0) {
-        console.log(`[Panel(${info.id})] Flushing ${queue.length} queued message(s)`);
+        console.log(
+          `[Panel(${info.id})] Flushing ${queue.length} queued message(s)`,
+        );
         pendingPanelMessages.delete(info.id);
         for (const msg of queue) {
           dispatchMessageToPanel(state, msg);
@@ -271,7 +283,6 @@ export function createRoll20PopoutPanel(url: string, windowName = ""): PanelInfo
   return info;
 }
 
-
 /**
  * Immediately dispatch a postMessage event inside a panel's webContents.
  * Data is double-JSON-encoded so it is never interpreted as executable JS.
@@ -303,7 +314,9 @@ export function sendMessageToPanel(id: string, data: unknown): void {
     const queue = pendingPanelMessages.get(id) ?? [];
     queue.push(data);
     pendingPanelMessages.set(id, queue);
-    console.log(`[Panel(${id})] Queued message (panel still loading), queue depth: ${queue.length}`);
+    console.log(
+      `[Panel(${id})] Queued message (panel still loading), queue depth: ${queue.length}`,
+    );
     return;
   }
   dispatchMessageToPanel(state, data);
@@ -356,7 +369,7 @@ function applyRoll20Security(view: WebContentsView): void {
     // All other window.open calls (OAuth redirects, internal navigation, etc.) are
     // denied silently; the window.open override injected by did-finish-load handles
     // popouts before setWindowOpenHandler is even reached, so this path is a fallback.
-    if (isHttpUrl(url) && (url.includes("/editor/popout"))) {
+    if (isHttpUrl(url) && url.includes("/editor/popout")) {
       createRoll20PopoutPanel(url);
     }
     return { action: "deny" };
@@ -386,21 +399,6 @@ function applyContentViewSecurity(view: WebContentsView, label: string): void {
     createPanel(url);
     return { action: "deny" };
   });
-}
-
-/**
- * Open a URL in the system browser, but only if it is a well-formed http/https URL.
- * Blocks file://, javascript:, custom protocol handlers, and malformed strings.
- */
-function safeOpenExternal(url: string): void {
-  if (isHttpUrl(url)) {
-    void shell.openExternal(url);
-  } else {
-    console.warn(
-      "[Security] Blocked non-http(s) URL from shell.openExternal:",
-      url,
-    );
-  }
 }
 
 /**
@@ -518,7 +516,7 @@ export function createPanel(
   );
 }
 
-export function addPanel(
+function addPanel(
   config: PanelConfig,
   webPreferences?: Electron.WebPreferences,
 ): PanelInfo {
@@ -847,7 +845,9 @@ export function createWindowWithPanels(): BrowserWindow {
 
 /** Create and configure the Roll20 WebContentsView. */
 function createRoll20View(win: BrowserWindow): WebContentsView {
-  const view = new WebContentsView({ webPreferences: roll20ContentViewWebPrefs() });
+  const view = new WebContentsView({
+    webPreferences: roll20ContentViewWebPrefs(),
+  });
 
   applyRoll20Security(view);
 
@@ -1101,7 +1101,9 @@ function loadPersistedPanels(win: BrowserWindow): void {
 function setupRendererDiagnostics(win: BrowserWindow): void {
   win.webContents.on("console-message", (e) => {
     const tag = e.level === "warning" ? "warn" : e.level;
-    console.log(`[Renderer:${tag}] ${e.message} (${e.sourceId}:${e.lineNumber})`);
+    console.log(
+      `[Renderer:${tag}] ${e.message} (${e.sourceId}:${e.lineNumber})`,
+    );
   });
   win.webContents.on("render-process-gone", (_e, details) => {
     console.error("[Renderer] Process gone:", details.reason, details.exitCode);
@@ -1144,7 +1146,9 @@ function createPanelView(
   };
   view.webContents.on("console-message", (e) => {
     const tag = e.level === "warning" ? "warn" : e.level;
-    console.log(`[Panel(${id}):${tag}] ${e.message} (${e.sourceId}:${e.lineNumber})`);
+    console.log(
+      `[Panel(${id}):${tag}] ${e.message} (${e.sourceId}:${e.lineNumber})`,
+    );
   });
   view.webContents.on(
     "did-fail-load",

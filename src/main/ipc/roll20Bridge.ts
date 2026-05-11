@@ -29,15 +29,26 @@ export function registerRoll20BridgeHandlers(): void {
    */
   ipcMain.on(
     "roll20.openPopout",
-    (event, payload: { url: string; windowName?: string; features: string }) => {
-      if (!isHttpUrl(payload?.url)) {
+    (
+      event,
+      payload: { url: string; windowName?: string; features: string },
+    ) => {
+      if (!isHttpUrl(payload.url)) {
         event.returnValue = null;
-        console.error("[Roll20Bridge] Invalid URL:", payload?.url);
+        console.error("[Roll20Bridge] Invalid URL:", payload.url);
         return;
       }
       try {
-        const info = createRoll20PopoutPanel(payload.url, payload.windowName ?? "");
-        console.log("[Roll20Bridge] Created popout panel:", info, "windowName:", payload.windowName);
+        const info = createRoll20PopoutPanel(
+          payload.url,
+          payload.windowName ?? "",
+        );
+        console.log(
+          "[Roll20Bridge] Created popout panel:",
+          info,
+          "windowName:",
+          payload.windowName,
+        );
         event.returnValue = info.id;
       } catch (err) {
         console.error("[Roll20Bridge] openPopout failed:", err);
@@ -54,9 +65,7 @@ export function registerRoll20BridgeHandlers(): void {
   ipcMain.on(
     "roll20.sendToPanel",
     (_event, payload: { panelId: string; data: unknown }) => {
-      if (typeof payload?.panelId === "string") {
-        sendMessageToPanel(payload.panelId, payload.data);
-      }
+      sendMessageToPanel(payload.panelId, payload.data);
     },
   );
 
@@ -65,9 +74,7 @@ export function registerRoll20BridgeHandlers(): void {
    * Removes the panel from the panel map and updates the overlay.
    */
   ipcMain.on("roll20.closePanel", (_event, payload: { panelId: string }) => {
-    if (typeof payload?.panelId === "string") {
-      removePanel(payload.panelId);
-    }
+    removePanel(payload.panelId);
   });
 
   /**
@@ -76,13 +83,10 @@ export function registerRoll20BridgeHandlers(): void {
    * then delivers it as a window.message event in the Roll20 main view and
    * also emits a roll20.panelMessage overlay event so the React UI can react.
    */
-  ipcMain.on(
-    "roll20.panelToRoll20",
-    (event, payload: { data: unknown }) => {
-      const panel = getPanelByWebContentsId(event.sender.id);
-      if (panel) {
-        sendMessageToRoll20View(panel.id, payload.data);
-      }
-    },
-  );
+  ipcMain.on("roll20.panelToRoll20", (event, payload: { data: unknown }) => {
+    const panel = getPanelByWebContentsId(event.sender.id);
+    if (panel) {
+      sendMessageToRoll20View(panel.id, payload.data);
+    }
+  });
 }

@@ -18,7 +18,7 @@
  */
 import { ipcRenderer } from "electron";
 
-(function () {
+(function (): void {
   "use strict";
 
   // --- window.name ----------------------------------------------------------
@@ -45,12 +45,12 @@ import { ipcRenderer } from "electron";
     get() {
       return {
         closed: false,
-        postMessage(data: unknown) {
+        postMessage(data: unknown): void {
           console.log("[Roll20Popout] window.opener.postMessage called");
           ipcRenderer.send("roll20.panelToRoll20", { data });
         },
-        focus() {},
-        blur() {},
+        focus(): void {},
+        blur(): void {},
       };
     },
   });
@@ -62,9 +62,9 @@ import { ipcRenderer } from "electron";
   Object.defineProperty(window, "__roll20PopoutBridge", {
     configurable: true,
     enumerable: false,
-    get() {
+    get(): { sendToOpener: (data: unknown) => void } {
       return {
-        sendToOpener(data: unknown) {
+        sendToOpener(data: unknown): void {
           ipcRenderer.send("roll20.panelToRoll20", { data });
         },
       };
@@ -76,34 +76,53 @@ import { ipcRenderer } from "electron";
   // .innerHTML = characterSheetHtml to inject the sheet into the popup window.
   // Our proxy captures that set and delivers it here as a message so we can
   // apply it to the real DOM element.
-  window.addEventListener("message", function (e: MessageEvent) {
-    if (!e.data || typeof e.data !== "object") return;
-    if (e.data.__r20type === "titleSet") {
-      document.title = e.data.title as string;
-      return;
-    }
-    if (e.data.__r20type === "domInject") {
-      const sel = e.data.sel as string;
-      const html = e.data.html as string;
-      console.log("[Roll20Popout] domInject →", sel, "len:", (html || "").length);
-      const el = document.querySelector(sel);
-      if (el) {
-        el.innerHTML = html;
-        // Roll20 hides injected root elements and expects to call .show() on
-        // the popup proxy — our IPC bridge doesn't forward that call.
-        // Strip inline display:none from direct children only so the content
-        // becomes visible without disturbing intentionally-hidden descendants.
-        for (const child of Array.from(el.children) as HTMLElement[]) {
-          if (child.style.display === "none") {
-            child.style.removeProperty("display");
-          }
+  window.addEventListener(
+    "message",
+    function (e: Omit<MessageEvent, "data"> & { data: unknown }): void {
+      if (!e.data || typeof e.data !== "object" || !("__r20type" in e.data))
+        return;
+      if (e.data.__r20type === "titleSet") {
+        if (!("title" in e.data) || typeof e.data["title"] !== "string") {
+          console.error("[Roll20Popout] titleSet: ignoring title:", e.data);
+          return;
         }
-        console.log("[Roll20Popout] domInject applied to", sel);
-      } else {
-        console.warn("[Roll20Popout] domInject: element not found:", sel);
+        document.title = e.data.title;
+        return;
       }
-    }
-  });
+      if (e.data.__r20type === "domInject") {
+        if (!("sel" in e.data) || !("html" in e.data)) {
+          console.error("[Roll20Popout] domInject: ignoring:", e.data);
+          return;
+        }
+        const sel = String(e.data.sel);
+        const html = String(e.data.html);
+        console.log(
+          "[Roll20Popout] domInject →",
+          sel,
+          "len:",
+          (html || "").length,
+        );
+        const el = document.querySelector(sel);
+        if (el) {
+          el.innerHTML = html;
+          // Roll20 hides injected root elements and expects to call .show() on
+          // the popup proxy — our IPC bridge doesn't forward that call.
+          // Strip inline display:none from direct children only so the content
+          // becomes visible without disturbing intentionally-hidden descendants.
+          for (const child of Array.from(el.children).filter(
+            (child) => child instanceof HTMLElement,
+          )) {
+            if (child.style.display === "none") {
+              child.style.removeProperty("display");
+            }
+          }
+          console.log("[Roll20Popout] domInject applied to", sel);
+        } else {
+          console.warn("[Roll20Popout] domInject: element not found:", sel);
+        }
+      }
+    },
+  );
 
   // Inject CSS overrides needed for popout panels.
   // Roll20's .dialog elements start hidden and are normally shown by the opener;
@@ -111,8 +130,7 @@ import { ipcRenderer } from "electron";
   // Must wait for DOMContentLoaded because document.head is null when the
   // preload first runs (the HTML parser hasn't created <head> yet).
   const injectPopoutStyles = (): void => {
-    const target = document.head ?? document.documentElement;
-    if (!target) return;
+    const target = document.head;
     const style = document.createElement("style");
     style.textContent = ".dialog { display: block }";
     target.appendChild(style);
@@ -123,5 +141,7 @@ import { ipcRenderer } from "electron";
     injectPopoutStyles();
   }
 
-  console.log("[Roll20Popout] Preload ready — opener, bridge, and domInject handler installed");
+  console.log(
+    "[Roll20Popout] Preload ready — opener, bridge, and domInject handler installed",
+  );
 })();
