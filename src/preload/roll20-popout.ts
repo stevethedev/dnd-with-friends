@@ -78,6 +78,10 @@ import { ipcRenderer } from "electron";
   // apply it to the real DOM element.
   window.addEventListener("message", function (e: MessageEvent) {
     if (!e.data || typeof e.data !== "object") return;
+    if (e.data.__r20type === "titleSet") {
+      document.title = e.data.title as string;
+      return;
+    }
     if (e.data.__r20type === "domInject") {
       const sel = e.data.sel as string;
       const html = e.data.html as string;

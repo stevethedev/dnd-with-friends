@@ -235,7 +235,6 @@ export function createRoll20PopoutPanel(url: string, windowName = ""): PanelInfo
     // did-finish-load: page + all sub-resources are done.
     state.view.webContents.on("did-finish-load", () => {
       console.log(`[Panel(${info.id})] did-finish-load at`, state.view.webContents.getURL());
-      state.view.webContents.openDevTools({ mode: "detach" });
       // Flush any postMessages Roll20 sent before the panel finished loading.
       const queue = pendingPanelMessages.get(info.id);
       if (queue && queue.length > 0) {
@@ -357,7 +356,7 @@ function applyRoll20Security(view: WebContentsView): void {
     // All other window.open calls (OAuth redirects, internal navigation, etc.) are
     // denied silently; the window.open override injected by did-finish-load handles
     // popouts before setWindowOpenHandler is even reached, so this path is a fallback.
-    if (isHttpUrl(url) && url.includes("/editor/popout")) {
+    if (isHttpUrl(url) && (url.includes("/editor/popout"))) {
       createRoll20PopoutPanel(url);
     }
     return { action: "deny" };
@@ -565,6 +564,26 @@ export function removePanel(id: string): void {
   state.view.webContents.close();
   if (focusedPanelId === id) {
     focusedPanelId = findHighestZPanel()?.id ?? null;
+  }
+  // Notify Roll20 that its popup proxy is now closed so it can clean up its
+  // listener subscription and treat the popup as gone (proxy.closed === true).
+  if (roll20View) {
+    void roll20View.webContents.executeJavaScript(`
+      (function () {
+        var callbacks = window.__roll20PanelCallbacks;
+        var id = ${JSON.stringify(id)};
+        if (!callbacks || !callbacks[id]) return;
+        var cb = callbacks[id];
+        if (cb.proxy) cb.proxy.closed = true;
+        // Trigger close() on the proxy to run unsub() and other cleanup,
+        // but guard against recursive IPC calls by deleting the entry first.
+        delete callbacks[id];
+        if (typeof cb.proxy.close === 'function') {
+          try { cb.proxy.close(); } catch (e) {}
+        }
+        console.log('[Roll20Override] proxy marked closed for panel', id);
+      })();
+    `);
   }
   savePanelConfigs();
   sendPanelListUpdate();
@@ -861,7 +880,8 @@ function createRoll20View(win: BrowserWindow): WebContentsView {
 
         window.open = function (url, target, features) {
           console.log('[Roll20Override] window.open called:', url, '| target:', target);
-          if (typeof url === 'string' && url.includes('/editor/popout')) {
+          var isPopout = typeof url === 'string' && (url.includes('/editor/popout') || url.includes('/editor/character/'));
+          if (isPopout) {
             var resolvedUrl = (url.indexOf('://') === -1)
               ? new URL(url, window.location.href).href
               : url;
@@ -892,6 +912,8 @@ function createRoll20View(win: BrowserWindow): WebContentsView {
             window.__roll20PanelCallbacks = window.__roll20PanelCallbacks || {};
             var _cb = { onload: null, proxy: null };
             window.__roll20PanelCallbacks[panelId] = _cb;
+
+            var _docTitle = '';
 
             // Element proxy: forwards DOM mutations on the proxy popup element
             // to the real DOM inside the panel via IPC.
@@ -993,7 +1015,12 @@ function createRoll20View(win: BrowserWindow): WebContentsView {
                 },
                 get body() { return makeElProxy('body'); },
                 get head() { return makeElProxy('head'); },
-                title: '',
+                get title() { return _docTitle; },
+                set title(v) {
+                  _docTitle = v;
+                  console.log('[Roll20Override] proxy.document.title =', v);
+                  window.__roll20Bridge.sendToPanel(panelId, { __r20type: 'titleSet', title: v });
+                },
               },
             };
             // Store proxy reference so onload is called with correct 'this'.
@@ -1005,10 +1032,23 @@ function createRoll20View(win: BrowserWindow): WebContentsView {
         console.log('[Roll20Override] window.open override installed');
       })();
     `);
-  });
 
-  // Open DevTools for debugging — remove once popout rendering is stable.
-  view.webContents.openDevTools({ mode: "detach" });
+    // Enable popout mode: poll until currentPlayer is available (it is set
+    // asynchronously after Firebase auth) then call set("usePopouts", true).
+    void view.webContents.executeJavaScript(`
+      (function () {
+        function trySetPopouts() {
+          if (window.currentPlayer && typeof window.currentPlayer.set === 'function') {
+            window.currentPlayer.set('usePopouts', true);
+            console.log('[Roll20Override] usePopouts set to true');
+          } else {
+            setTimeout(trySetPopouts, 500);
+          }
+        }
+        trySetPopouts();
+      })();
+    `);
+  });
 
   const savedUrl = store.get("lastRoll20Url");
   void view.webContents.loadURL(
