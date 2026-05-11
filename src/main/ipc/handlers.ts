@@ -1,14 +1,8 @@
 import type { Beyond20Status, PanelInfo } from "../../shared/types";
-import { store } from "../store";
-import {
-  DEFAULT_PANEL_WIDTH,
-  DEFAULT_PANEL_HEIGHT,
-  TOOLBAR_HEIGHT,
-} from "../../shared/constants";
 import {
   getRoll20View,
   getPanelInfoList,
-  addPanel,
+  createPanel,
   removePanel,
   minimizePanel,
   restorePanel,
@@ -26,21 +20,7 @@ import type { HandlerMap } from "../../shared/ipc/types";
 export function createHandlers(): HandlerMap {
   return {
     "panel.list": (): PanelInfo[] => getPanelInfoList(),
-    "panel.create": ({ url }: { url: string }): PanelInfo => {
-      // Read and increment the counter atomically against the store.
-      // Persisting BEFORE addPanel ensures a crash between the two writes
-      // can never produce a duplicate panel ID on the next launch.
-      const counter = store.get("nextPanelId");
-      store.set("nextPanelId", counter + 1);
-      return addPanel({
-        id: `panel-${counter}`,
-        url,
-        width: DEFAULT_PANEL_WIDTH,
-        height: DEFAULT_PANEL_HEIGHT,
-        x: 0,
-        y: TOOLBAR_HEIGHT,
-      });
-    },
+    "panel.create": ({ url }: { url: string }): PanelInfo => createPanel(url),
     "panel.remove": ({ id }: { id: string }): PanelInfo[] => {
       removePanel(id);
       return getPanelInfoList();

@@ -10,6 +10,7 @@ import {
   MIN_PANEL_HEIGHT,
   MAX_PANEL_WIDTH_FRACTION,
   PANEL_MIN_GRAB_PX,
+  DEFAULT_PANEL_WIDTH,
   DEFAULT_PANEL_HEIGHT,
   WINDOW_DEFAULT_WIDTH,
   WINDOW_DEFAULT_HEIGHT,
@@ -43,6 +44,15 @@ interface PanelState {
 }
 
 const panelMap = new Map<string, PanelState>();
+
+/**
+ * Messages queued for panels that are still loading. Roll20 calls
+ * proxy.postMessage() synchronously after window.open() returns — the panel's
+ * page hasn't loaded yet at that point, so executeJavaScript would dispatch
+ * into an empty context and the message would be silently dropped.
+ * Queued messages are flushed in the panel's did-finish-load handler.
+ */
+const pendingPanelMessages = new Map<string, unknown[]>();
 
 /**
  * ID of the most recently focused panel, used to track which panel's URL
@@ -87,7 +97,274 @@ function contentViewWebPrefs(): Electron.WebPreferences {
   };
 }
 
-/** Block non-http(s) navigations and redirect popup windows to the system browser. */
+/**
+ * Electron partition key shared by the Roll20 WebContentsView and all Roll20
+ * popout BrowserWindows. A persist: partition survives app restarts and keeps
+ * cookies / localStorage in sync across all Roll20 windows so session auth
+ * (and any popout state) works without re-logging in.
+ */
+const ROLL20_PARTITION = "persist:roll20";
+
+/**
+ * CSP injected into every HTML document loaded in the Roll20 session
+ * (both the main Roll20 WebContentsView and all Roll20 popout panels).
+ * Applied via session.webRequest.onHeadersReceived so it covers external URLs
+ * that we cannot modify. Intentionally omits 'unsafe-eval'; add it back only
+ * if Roll20 fails to function without it.
+ */
+const ROLL20_CSP = [
+  "default-src 'self' https:",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:",
+  "style-src 'self' 'unsafe-inline' https: data:",
+  "font-src 'self' https: data:",
+  "img-src 'self' https: data: blob:",
+  "connect-src 'self' https: wss:",
+  "media-src 'self' https: blob:",
+].join("; ");
+
+/**
+ * Install a webRequest hook that replaces (or injects) the Content-Security-Policy
+ * header for every HTML document response in the Roll20 session partition.
+ * Scoped to mainFrame resources only — CSP is irrelevant for scripts, images, etc.
+ * Must be called after app.ready and before any WebContentsView is created with
+ * the Roll20 partition, so the hook is in place before the first navigation.
+ */
+function configureRoll20Session(): void {
+  const roll20Session = session.fromPartition(ROLL20_PARTITION);
+  roll20Session.webRequest.onHeadersReceived(
+    { urls: ["https://*/*"] },
+    (details, callback) => {
+      // Only inject for HTML document loads — CSP has no effect on sub-resources.
+      if (details.resourceType !== "mainFrame") {
+        callback({ responseHeaders: details.responseHeaders });
+        return;
+      }
+      // Remove any existing CSP header (case-insensitive) so we don't end up
+      // with two CSP headers, which browsers merge as the intersection.
+      const headers: Record<string, string[]> = {};
+      for (const [key, value] of Object.entries(
+        details.responseHeaders ?? {},
+      )) {
+        if (key.toLowerCase() !== "content-security-policy") {
+          headers[key] = value;
+        }
+      }
+      headers["Content-Security-Policy"] = [ROLL20_CSP];
+      callback({ responseHeaders: headers });
+    },
+  );
+}
+
+/** WebPreferences for the Roll20 WebContentsView. Uses the shared Roll20 partition. */
+function roll20ContentViewWebPrefs(): Electron.WebPreferences {
+  return {
+    partition: ROLL20_PARTITION,
+    preload: join(__dirname, "../preload/roll20.js"),
+    nodeIntegration: false,
+    contextIsolation: true,
+    sandbox: true,
+    webSecurity: true,
+    allowRunningInsecureContent: false,
+  };
+}
+
+/**
+ * WebPreferences for WebContentsViews that host Roll20 popout pages.
+ * Same partition as the main Roll20 view (shared auth cookies) plus the
+ * popout-specific preload.
+ *
+ * contextIsolation: false is intentional — the roll20-popout preload must call
+ * Object.defineProperty(window, 'opener', ...) in the main world so that
+ * Roll20's page scripts find window.opener populated before they execute.
+ * With contextIsolation: true the preload's window is isolated and
+ * defineProperty would not affect the page's window object.
+ *
+ * windowName is passed via additionalArguments so the preload can set
+ * window.name synchronously (before any page script reads it).
+ */
+function roll20PopoutPanelWebPrefs(windowName?: string): Electron.WebPreferences {
+  return {
+    partition: ROLL20_PARTITION,
+    preload: join(__dirname, "../preload/roll20-popout.js"),
+    additionalArguments: windowName ? [`--roll20-window-name=${windowName}`] : [],
+    nodeIntegration: false,
+    contextIsolation: false,
+    sandbox: true,
+    webSecurity: true,
+    allowRunningInsecureContent: false,
+  };
+}
+
+/**
+ * Create a panel for a Roll20 /editor/popout URL, using the Roll20 partition
+ * and popout preload so the panel shares session cookies with the main Roll20
+ * view and can route window.opener.postMessage() calls back to it.
+ *
+ * windowName is the target argument from window.open(url, name, features) —
+ * Roll20 uses it as a popup identifier (e.g. "JournalPopout-12345"). We inject
+ * it as window.name so the popout page can read it during initialization.
+ *
+ * After the panel's page finishes loading, fires proxy.onload() in Roll20's
+ * main-view context (via __roll20PanelCallbacks) so Roll20 knows the popup is
+ * ready to receive postMessage data — the standard mechanism popup-based SPAs
+ * use to delay sending init data until the popup is loaded.
+ */
+export function createRoll20PopoutPanel(url: string, windowName = ""): PanelInfo {
+  const counter = store.get("nextPanelId");
+  store.set("nextPanelId", counter + 1);
+  const offset = (panelMap.size % 6) * 30;
+  const panelId = `panel-${counter}`;
+
+  // Load the real URL directly. window.name and window.opener are both set
+  // synchronously by the roll20-popout preload (via additionalArguments /
+  // process.argv and Object.defineProperty) before any page script executes —
+  // no about:blank intermediate step is needed.
+  const info = addPanel(
+    {
+      id: panelId,
+      url,
+      width: DEFAULT_PANEL_WIDTH,
+      height: DEFAULT_PANEL_HEIGHT,
+      x: offset,
+      y: TOOLBAR_HEIGHT + offset,
+    },
+    roll20PopoutPanelWebPrefs(windowName),
+  );
+  const state = panelMap.get(info.id);
+  if (state) {
+    // did-finish-load: page + all sub-resources are done.
+    state.view.webContents.on("did-finish-load", () => {
+      console.log(`[Panel(${info.id})] did-finish-load at`, state.view.webContents.getURL());
+      state.view.webContents.openDevTools({ mode: "detach" });
+      // Flush any postMessages Roll20 sent before the panel finished loading.
+      const queue = pendingPanelMessages.get(info.id);
+      if (queue && queue.length > 0) {
+        console.log(`[Panel(${info.id})] Flushing ${queue.length} queued message(s)`);
+        pendingPanelMessages.delete(info.id);
+        for (const msg of queue) {
+          dispatchMessageToPanel(state, msg);
+        }
+      }
+      // Fire proxy.onload() in Roll20's page context if Roll20 set it.
+      // Roll20 may do: var popup = window.open(...); popup.onload = fn; — waiting
+      // for the popup to load before sending init data via postMessage. Since we
+      // return a plain proxy object (not a real Window), we have to fire onload
+      // manually. Callbacks are stored in window.__roll20PanelCallbacks by the
+      // injected window.open override.
+      if (roll20View) {
+        void roll20View.webContents.executeJavaScript(`
+          (function () {
+            var callbacks = window.__roll20PanelCallbacks;
+            var panelId = ${JSON.stringify(info.id)};
+            if (!callbacks || !callbacks[panelId]) return;
+            var cb = callbacks[panelId];
+            if (typeof cb.onload === 'function') {
+              console.log('[Roll20Override] Firing proxy.onload for', panelId);
+              // Call with proxy as 'this' so this.document/this.postMessage
+              // resolve correctly inside Roll20's onload handler.
+              try { cb.onload.call(cb.proxy); } catch (e) { console.error('[Roll20Override] onload threw:', e); }
+            }
+          })();
+        `);
+      }
+    });
+  }
+  return info;
+}
+
+
+/**
+ * Immediately dispatch a postMessage event inside a panel's webContents.
+ * Data is double-JSON-encoded so it is never interpreted as executable JS.
+ * Only call this after the panel has finished loading (use sendMessageToPanel
+ * for the public API — it handles queuing automatically).
+ */
+function dispatchMessageToPanel(state: PanelState, data: unknown): void {
+  try {
+    const encoded = JSON.stringify(JSON.stringify(data));
+    void state.view.webContents.executeJavaScript(
+      `window.dispatchEvent(new MessageEvent('message',{data:JSON.parse(${encoded}),origin:'https://app.roll20.net'}))`,
+    );
+  } catch {
+    // data is not JSON-serialisable — skip silently
+  }
+}
+
+/**
+ * Send a postMessage to a panel. If the panel's page is still loading, the
+ * message is queued and replayed in order once did-finish-load fires.
+ * Roll20 calls proxy.postMessage() immediately after window.open() returns,
+ * before the panel has navigated — queuing prevents those messages from being
+ * dispatched into an empty context and silently dropped.
+ */
+export function sendMessageToPanel(id: string, data: unknown): void {
+  const state = panelMap.get(id);
+  if (!state) return;
+  if (state.view.webContents.isLoading()) {
+    const queue = pendingPanelMessages.get(id) ?? [];
+    queue.push(data);
+    pendingPanelMessages.set(id, queue);
+    console.log(`[Panel(${id})] Queued message (panel still loading), queue depth: ${queue.length}`);
+    return;
+  }
+  dispatchMessageToPanel(state, data);
+}
+
+/**
+ * Dispatch a postMessage event inside the Roll20 main view's webContents.
+ * Used to forward panel → Roll20 messages from the main process.
+ */
+export function sendMessageToRoll20View(panelId: string, data: unknown): void {
+  if (!roll20View) return;
+  try {
+    const encoded = JSON.stringify(JSON.stringify(data));
+    void roll20View.webContents.executeJavaScript(
+      `window.dispatchEvent(new MessageEvent('message',{data:JSON.parse(${encoded}),origin:'https://app.roll20.net'}))`,
+    );
+    pushEvent(mainWindow, "roll20.panelMessage", { panelId, data });
+  } catch {
+    // data is not JSON-serialisable — skip silently
+  }
+}
+
+/** Return the PanelState whose webContents matches the given Electron webContents id. */
+export function getPanelByWebContentsId(
+  webContentsId: number,
+): PanelState | undefined {
+  for (const state of panelMap.values()) {
+    if (state.view.webContents.id === webContentsId) return state;
+  }
+  return undefined;
+}
+
+/**
+ * Security policy for the Roll20 WebContentsView. Differs from the generic
+ * applyContentViewSecurity in its window-open handling:
+ *  - /editor/popout → panel with shared Roll20 session + popout preload
+ *  - other http URLs → panel (same as all other views)
+ *  - non-http URLs  → deny
+ */
+function applyRoll20Security(view: WebContentsView): void {
+  view.webContents.on("will-navigate", (event, url) => {
+    if (!isHttpUrl(url)) {
+      console.warn("[Security] Roll20 view blocked navigation to:", url);
+      event.preventDefault();
+    }
+  });
+  view.webContents.setWindowOpenHandler(({ url }) => {
+    // Only /editor/popout windows become panels — they are explicit user-facing
+    // popouts that Roll20 opens via window.open and communicates with via postMessage.
+    // All other window.open calls (OAuth redirects, internal navigation, etc.) are
+    // denied silently; the window.open override injected by did-finish-load handles
+    // popouts before setWindowOpenHandler is even reached, so this path is a fallback.
+    if (isHttpUrl(url) && url.includes("/editor/popout")) {
+      createRoll20PopoutPanel(url);
+    }
+    return { action: "deny" };
+  });
+}
+
+/** Block non-http(s) navigations; intercept new-window requests as panels. */
 function applyContentViewSecurity(view: WebContentsView, label: string): void {
   view.webContents.on("will-navigate", (event, url) => {
     if (!isHttpUrl(url)) {
@@ -95,8 +372,19 @@ function applyContentViewSecurity(view: WebContentsView, label: string): void {
       event.preventDefault();
     }
   });
-  view.webContents.setWindowOpenHandler(({ url }) => {
-    safeOpenExternal(url);
+  view.webContents.setWindowOpenHandler(({ url, disposition, referrer }) => {
+    // Extension content scripts (e.g. Beyond20) run inside panel webContents
+    // and may call window.open() for their own internal UI. Skip those — the
+    // referrer frame URL starts with chrome-extension:// in that case.
+    if (referrer.url.startsWith("chrome-extension://")) {
+      console.log(`[Security] ${label} blocked extension window.open: ${url}`);
+      return { action: "deny" };
+    }
+    if (!isHttpUrl(url)) return { action: "deny" };
+    console.log(
+      `[Security] ${label} window.open → panel: ${url} (disposition: ${disposition}, referrer: ${referrer.url})`,
+    );
+    createPanel(url);
     return { action: "deny" };
   });
 }
@@ -203,12 +491,43 @@ export function getPanelInfoList(): PanelInfo[] {
   return Array.from(panelMap.values()).map(panelStateToInfo);
 }
 
-export function addPanel(config: PanelConfig): PanelInfo {
+/**
+ * Allocate a persisted panel ID, compute a cascade offset so successive panels
+ * don't stack exactly on top of each other, and call addPanel.
+ * Used by both the IPC "panel.create" handler and the new-window interceptor.
+ * webPreferences is passed through to createPanelView; omit to use the shared
+ * content-view defaults.
+ */
+export function createPanel(
+  url: string,
+  webPreferences?: Electron.WebPreferences,
+): PanelInfo {
+  const counter = store.get("nextPanelId");
+  store.set("nextPanelId", counter + 1);
+  // Cascade new panels so they don't all land on the same spot.
+  const offset = (panelMap.size % 6) * 30;
+  return addPanel(
+    {
+      id: `panel-${counter}`,
+      url,
+      width: DEFAULT_PANEL_WIDTH,
+      height: DEFAULT_PANEL_HEIGHT,
+      x: offset,
+      y: TOOLBAR_HEIGHT + offset,
+    },
+    webPreferences,
+  );
+}
+
+export function addPanel(
+  config: PanelConfig,
+  webPreferences?: Electron.WebPreferences,
+): PanelInfo {
   if (panelMap.has(config.id)) {
     throw new Error(`Panel ${config.id} already exists`);
   }
 
-  const view = createPanelView(config.id, config.url);
+  const view = createPanelView(config.id, config.url, webPreferences);
   const state: PanelState = {
     id: config.id,
     view,
@@ -231,6 +550,7 @@ export function addPanel(config: PanelConfig): PanelInfo {
   applyPanelBounds(state);
   focusedPanelId = config.id;
   savePanelConfigs();
+  sendPanelListUpdate();
   return panelStateToInfo(state);
 }
 
@@ -238,6 +558,7 @@ export function removePanel(id: string): void {
   const state = panelMap.get(id);
   if (!state) return;
   panelMap.delete(id);
+  pendingPanelMessages.delete(id);
   if (mainWindow) {
     mainWindow.contentView.removeChildView(state.view);
   }
@@ -429,6 +750,10 @@ export function createWindowWithPanels(): BrowserWindow {
     event.preventDefault();
   });
 
+  // Install the CSP hook before any Roll20 views are created so the hook is
+  // active for the very first navigation.
+  configureRoll20Session();
+
   // Z-order: Roll20 (bottom) → panel views (stacked by zIndex)
   roll20View = createRoll20View(win);
   win.contentView.addChildView(roll20View);
@@ -503,9 +828,9 @@ export function createWindowWithPanels(): BrowserWindow {
 
 /** Create and configure the Roll20 WebContentsView. */
 function createRoll20View(win: BrowserWindow): WebContentsView {
-  const view = new WebContentsView({ webPreferences: contentViewWebPrefs() });
+  const view = new WebContentsView({ webPreferences: roll20ContentViewWebPrefs() });
 
-  applyContentViewSecurity(view, "Roll20 view");
+  applyRoll20Security(view);
 
   const handleRoll20Navigation = (_e: unknown, url: string): void => {
     store.set("lastRoll20Url", url);
@@ -513,6 +838,177 @@ function createRoll20View(win: BrowserWindow): WebContentsView {
   };
   view.webContents.on("did-navigate", handleRoll20Navigation);
   view.webContents.on("did-navigate-in-page", handleRoll20Navigation);
+
+  // Log Roll20 view console output so [Roll20Override] diagnostic messages are visible.
+  view.webContents.on("console-message", (e) => {
+    const tag = e.level === "warning" ? "warn" : e.level;
+    console.log(`[Roll20(${tag})] ${e.message}`);
+  });
+
+  // After each full page load, patch window.open so popout URLs create panels
+  // instead of new browser windows and return a postMessage-capable proxy.
+  // Runs on did-finish-load (not did-navigate) so Roll20's own scripts have
+  // already executed and we override into the live page context.
+  view.webContents.on("did-finish-load", () => {
+    void view.webContents.executeJavaScript(`
+      (function () {
+        var hasBridge = typeof window.__roll20Bridge !== 'undefined';
+        console.log('[Roll20Override] did-finish-load — bridge:', hasBridge, 'already installed:', !!window.__roll20OpenInstalled);
+        if (window.__roll20OpenInstalled || !window.__roll20Bridge) return;
+        window.__roll20OpenInstalled = true;
+
+        var _origOpen = window.open.bind(window);
+
+        window.open = function (url, target, features) {
+          console.log('[Roll20Override] window.open called:', url, '| target:', target);
+          if (typeof url === 'string' && url.includes('/editor/popout')) {
+            var resolvedUrl = (url.indexOf('://') === -1)
+              ? new URL(url, window.location.href).href
+              : url;
+            var windowName = typeof target === 'string' ? target : '';
+            console.log('[Roll20Override] Intercepting popout, resolved URL:', resolvedUrl, 'name:', windowName);
+            var panelId = window.__roll20Bridge.openPopout(
+              resolvedUrl,
+              windowName,
+              typeof features === 'string' ? features : ''
+            );
+            if (!panelId) {
+              console.warn('[Roll20Override] openPopout returned null, falling back to native open');
+              return _origOpen(url, target, features);
+            }
+            console.log('[Roll20Override] Panel created, ID:', panelId);
+
+            var unsub = window.__roll20Bridge.onPanelMessage(function (id, data) {
+              if (id === panelId) {
+                window.dispatchEvent(new MessageEvent('message', {
+                  data: data,
+                  origin: 'https://app.roll20.net',
+                }));
+              }
+            });
+
+            // Store per-panel callbacks so the main process can fire proxy.onload
+            // after the panel's page has finished loading (did-finish-load).
+            window.__roll20PanelCallbacks = window.__roll20PanelCallbacks || {};
+            var _cb = { onload: null, proxy: null };
+            window.__roll20PanelCallbacks[panelId] = _cb;
+
+            // Element proxy: forwards DOM mutations on the proxy popup element
+            // to the real DOM inside the panel via IPC.
+            //
+            // ownerDocument is set to the main Roll20 view's real document so
+            // jQuery's buildFragment can call ownerDocument.createDocumentFragment()
+            // and parse HTML in a real DOM context before forwarding it.
+            function makeElProxy(sel) {
+              var _inner = '';
+              var el = {};
+              // jQuery requires ownerDocument for HTML parsing (createDocumentFragment).
+              // Use the main view's real document — fragments built here are serialised
+              // back to HTML before being sent to the panel.
+              el.ownerDocument = document;
+              el.nodeType = 1;
+              el.nodeName = 'DIV';
+              el.tagName = 'DIV';
+              el.parentNode = null;
+              el.childNodes = [];
+              el.firstChild = null;
+              el.lastChild = null;
+              Object.defineProperty(el, 'innerHTML', {
+                configurable: true,
+                get: function() { return _inner; },
+                set: function(html) {
+                  _inner = html;
+                  console.log('[Roll20Override] innerHTML= on "' + sel + '" len:', (html||'').length);
+                  window.__roll20Bridge.sendToPanel(panelId, { __r20type: 'domInject', sel: sel, html: html });
+                },
+              });
+              // jQuery appends a DocumentFragment built from ownerDocument above.
+              // Serialise it to HTML and forward to the panel.
+              el.appendChild = function(child) {
+                try {
+                  var tmp = document.createElement('div');
+                  tmp.appendChild(child.cloneNode ? child.cloneNode(true) : child);
+                  var html = tmp.innerHTML;
+                  if (html) {
+                    console.log('[Roll20Override] appendChild on "' + sel + '" len:', html.length);
+                    window.__roll20Bridge.sendToPanel(panelId, { __r20type: 'domInject', sel: sel, html: html });
+                  }
+                } catch(e) { console.warn('[Roll20Override] appendChild failed:', e); }
+              };
+              el.insertBefore = function(child) { el.appendChild(child); };
+              el.removeChild = function() { return null; };
+              el.replaceChild = function(n) { el.appendChild(n); };
+              el.getAttribute = function() { return null; };
+              el.setAttribute = function() {};
+              el.removeAttribute = function() {};
+              el.hasAttribute = function() { return false; };
+              el.querySelector = function() { return null; };
+              el.querySelectorAll = function() { return []; };
+              el.getElementsByClassName = function() { return []; };
+              el.getElementsByTagName = function() { return []; };
+              el.style = {};
+              el.classList = { add: function(){}, remove: function(){}, contains: function(){ return false; }, toggle: function(){} };
+              return el;
+            }
+
+            var proxy = {
+              closed: false,
+              name: windowName,
+              get onload() { return _cb.onload; },
+              set onload(fn) {
+                console.log('[Roll20Override] proxy.onload set for panel', panelId);
+                _cb.onload = fn;
+              },
+              postMessage: function (data, targetOrigin) {
+                console.log('[Roll20Override] proxy.postMessage to panel', panelId);
+                window.__roll20Bridge.sendToPanel(panelId, data);
+              },
+              close: function () {
+                proxy.closed = true;
+                delete window.__roll20PanelCallbacks[panelId];
+                unsub();
+                window.__roll20Bridge.closePanel(panelId);
+              },
+              focus: function () {},
+              blur: function () {},
+              // Proxy popup.document so Roll20's onload handler can inject the
+              // character sheet HTML into #containerdiv via innerHTML assignment.
+              // Each method returns a live element proxy that forwards writes
+              // to the panel's real DOM through the IPC bridge.
+              document: {
+                readyState: 'complete',
+                getElementById: function(id) {
+                  console.log('[Roll20Override] proxy.document.getElementById:', id);
+                  return makeElProxy('#' + id);
+                },
+                querySelector: function(sel) {
+                  console.log('[Roll20Override] proxy.document.querySelector:', sel);
+                  return makeElProxy(sel);
+                },
+                querySelectorAll: function() { return []; },
+                getElementsByClassName: function() { return []; },
+                createElement: function(tag) {
+                  console.log('[Roll20Override] proxy.document.createElement:', tag);
+                  return makeElProxy('[' + tag + ']');
+                },
+                get body() { return makeElProxy('body'); },
+                get head() { return makeElProxy('head'); },
+                title: '',
+              },
+            };
+            // Store proxy reference so onload is called with correct 'this'.
+            _cb.proxy = proxy;
+            return proxy;
+          }
+          return _origOpen(url, target, features);
+        };
+        console.log('[Roll20Override] window.open override installed');
+      })();
+    `);
+  });
+
+  // Open DevTools for debugging — remove once popout rendering is stable.
+  view.webContents.openDevTools({ mode: "detach" });
 
   const savedUrl = store.get("lastRoll20Url");
   void view.webContents.loadURL(
@@ -563,13 +1059,10 @@ function loadPersistedPanels(win: BrowserWindow): void {
 
 /** Wire up renderer console/crash logging on the BrowserWindow's own webContents. */
 function setupRendererDiagnostics(win: BrowserWindow): void {
-  win.webContents.on(
-    "console-message",
-    (_e, level, message, line, sourceId) => {
-      const tag = ["verbose", "info", "warn", "error"][level] ?? "log";
-      console.log(`[Renderer:${tag}] ${message} (${sourceId}:${line})`);
-    },
-  );
+  win.webContents.on("console-message", (e) => {
+    const tag = e.level === "warning" ? "warn" : e.level;
+    console.log(`[Renderer:${tag}] ${e.message} (${e.sourceId}:${e.lineNumber})`);
+  });
   win.webContents.on("render-process-gone", (_e, details) => {
     console.error("[Renderer] Process gone:", details.reason, details.exitCode);
   });
@@ -589,8 +1082,14 @@ function setupRendererDiagnostics(win: BrowserWindow): void {
   });
 }
 
-function createPanelView(id: string, url: string): WebContentsView {
-  const view = new WebContentsView({ webPreferences: contentViewWebPrefs() });
+function createPanelView(
+  id: string,
+  url: string,
+  webPreferences?: Electron.WebPreferences,
+): WebContentsView {
+  const view = new WebContentsView({
+    webPreferences: webPreferences ?? contentViewWebPrefs(),
+  });
 
   applyContentViewSecurity(view, `Panel ${id}`);
 
@@ -603,11 +1102,19 @@ function createPanelView(id: string, url: string): WebContentsView {
     pushEvent(mainWindow, "panel.urlChanged", { id, url: newUrl });
     if (persist) sendPanelListUpdate();
   };
+  view.webContents.on("console-message", (e) => {
+    const tag = e.level === "warning" ? "warn" : e.level;
+    console.log(`[Panel(${id}):${tag}] ${e.message} (${e.sourceId}:${e.lineNumber})`);
+  });
   view.webContents.on(
-    "console-message",
-    (_e, level, message, line, sourceId) => {
-      const tag = ["verbose", "info", "warn", "error"][level] ?? "log";
-      console.log(`[Panel(${id}):${tag}] ${message} (${sourceId}:${line})`);
+    "did-fail-load",
+    (_e, errorCode, errorDescription, validatedURL) => {
+      console.error(
+        `[Panel(${id})] Failed to load:`,
+        validatedURL,
+        errorCode,
+        errorDescription,
+      );
     },
   );
   view.webContents.on("did-navigate", (_e, newUrl) => {

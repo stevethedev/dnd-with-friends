@@ -38,6 +38,7 @@ export const ipc = {
     navigate: cmd("roll20.navigate"),
     getUrl: cmd("roll20.getUrl"),
     onUrlChanged: evt("roll20.urlChanged"),
+    onPanelMessage: evt("roll20.panelMessage"),
   },
   beyond20: {
     getStatus: cmd("beyond20.getStatus"),

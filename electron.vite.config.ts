@@ -28,6 +28,8 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: resolve(__dirname, "src/preload/index.ts"),
+          roll20: resolve(__dirname, "src/preload/roll20.ts"),
+          "roll20-popout": resolve(__dirname, "src/preload/roll20-popout.ts"),
         },
       },
     },

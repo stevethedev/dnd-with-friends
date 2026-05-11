@@ -114,6 +114,7 @@ export const API = {
     "panel.listUpdated": z.array(PanelInfoSchema),
     "panel.urlChanged": z.object({ id: z.string(), url: z.string() }),
     "roll20.urlChanged": z.string(),
+    "roll20.panelMessage": z.object({ panelId: z.string(), data: z.unknown() }),
     "beyond20.statusUpdated": Beyond20StatusSchema,
     "window.maximizeChanged": z.boolean(),
   },
