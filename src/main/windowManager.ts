@@ -109,8 +109,8 @@ const ROLL20_PARTITION = "persist:roll20";
  * CSP injected into every HTML document loaded in the Roll20 session
  * (both the main Roll20 WebContentsView and all Roll20 popout panels).
  * Applied via session.webRequest.onHeadersReceived so it covers external URLs
- * that we cannot modify. Intentionally omits 'unsafe-eval'; add it back only
- * if Roll20 fails to function without it.
+ * that we cannot modify. Uses 'unsafe-eval' because Roll20 fails to function
+ * without it.
  */
 const ROLL20_CSP = [
   "default-src 'self' https:",
@@ -635,9 +635,6 @@ export function movePanelView(id: string, x: number, y: number): void {
   );
   state.x = clamped.x;
   state.y = clamped.y;
-  // Always broadcast so sibling panels' clip-paths stay accurate during drag.
-  // applyPanelBounds (WebContentsView setBounds) is deferred to commit-only to
-  // prevent rapid setBounds calls from blanking the Chromium compositor.
   sendPanelListUpdate();
   applyPanelBounds(state);
 }
@@ -650,7 +647,6 @@ export function resizePanelView(
   id: string,
   width: number,
   height: number,
-  commit: boolean,
 ): void {
   if (!mainWindow) return;
   const state = panelMap.get(id);
@@ -666,11 +662,8 @@ export function resizePanelView(
   );
   state.width = clamped.width;
   state.height = clamped.height;
-  // Same broadcast-always / apply-on-commit semantics as movePanelView.
   sendPanelListUpdate();
-  if (commit) {
-    applyPanelBounds(state);
-  }
+  applyPanelBounds(state);
 }
 
 export function navigatePanel(id: string, url: string): void {
@@ -703,7 +696,8 @@ async function captureFavicon(id: string, faviconUrl: string): Promise<void> {
     const base64 = Buffer.from(buffer).toString("base64");
     state.favicon = `data:${contentType};base64,${base64}`;
     sendPanelListUpdate();
-  } catch {
+  } catch (err) {
+    console.error(`Failed to fetch favicon for ${id}:`, err);
     // Favicon fetch is best-effort; leave as null on failure
   }
 }

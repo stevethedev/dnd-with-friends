@@ -27,6 +27,7 @@ export function MinimizedPanelTile({
         onRestore(panel.id);
       }}
       onKeyDown={(e) => {
+        if (e.key === " ") e.preventDefault(); // Prevent scrolling when space is pressed
         if (e.key === "Enter" || e.key === " ") onRestore(panel.id);
       }}
     >

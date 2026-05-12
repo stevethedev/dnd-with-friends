@@ -15,7 +15,7 @@
     "check:format": "prettier --check .",
     "check:lint": "eslint --max-warnings=0 .",
     "check:deps": "knip",
-    "fix": "npm-run-all fix:*",
+    "fix": "npm-run-all fix:* check",
     "fix:format": "prettier --write .",
     "fix:lint": "eslint --fix .",
     "icons": "icon-gen -i ./resources/icon.png -o ./resources/icons --ico --ico-name=icon --icns --icns-name icon --favicon --favicon-name icon --favicon-png-sizes 16,32,128,256,512,1024",

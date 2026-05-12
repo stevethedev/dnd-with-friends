@@ -20,7 +20,11 @@ export interface Roll20Bridge {
    * to identify the popup later (e.g. "JournalPopout-12345"). We inject it as
    * window.name in the panel so the page can read it.
    */
-  openPopout: (url: string, windowName: string, features: string) => string;
+  openPopout: (
+    url: string,
+    windowName: string,
+    features: string,
+  ) => string | null;
   /** Forward a postMessage to a specific panel by ID. */
   sendToPanel: (panelId: string, data: unknown) => void;
   /** Remove a panel (called when the proxy window is close()d). */
@@ -35,12 +39,17 @@ export interface Roll20Bridge {
 }
 
 const bridge: Roll20Bridge = {
-  openPopout(url: string, windowName: string, features: string): string {
-    return ipcRenderer.sendSync("roll20.openPopout", {
-      url,
-      windowName,
-      features,
-    }) as string;
+  openPopout(url: string, windowName: string, features: string): string | null {
+    const popout: unknown =
+      ipcRenderer.sendSync("roll20.openPopout", {
+        url,
+        windowName,
+        features,
+      }) ?? null;
+    if (typeof popout !== "string" && popout !== null) {
+      throw new Error("roll20.openPopout returned invalid result");
+    }
+    return popout;
   },
 
   sendToPanel(panelId: string, data: unknown): void {

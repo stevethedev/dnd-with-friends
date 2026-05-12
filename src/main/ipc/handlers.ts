@@ -44,14 +44,12 @@ export function createHandlers(): HandlerMap {
       id,
       width,
       height,
-      final,
     }: {
       id: string;
       width: number;
       height: number;
-      final?: boolean;
     }): void => {
-      resizePanelView(id, width, height, final ?? false);
+      resizePanelView(id, width, height);
     },
     "panel.navigate": ({ id, url }: { id: string; url: string }): void => {
       navigatePanel(id, url);
