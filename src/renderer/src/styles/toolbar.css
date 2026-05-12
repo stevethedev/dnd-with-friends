@@ -9,18 +9,23 @@ html,
 body {
   margin: 0;
   padding: 0;
-  background: #1a1a2e;
+  background: transparent;
   overflow: hidden;
   /* eslint-disable-next-line css/use-baseline */
   user-select: none;
   -webkit-user-select: none;
+  pointer-events: none;
 }
 
 #root {
   width: 100vw;
-  height: 48px;
-  background: #1a1a2e;
+  height: 100vh;
+  background: transparent;
+  position: relative;
+  overflow: hidden;
 }
+
+/* ─── Toolbar ─────────────────────────────────────────────────────────────── */
 
 .toolbar {
   height: 48px;
@@ -39,90 +44,74 @@ body {
   font-size: 13px;
   /* eslint-disable-next-line css/no-invalid-properties */
   -webkit-app-region: drag;
+  pointer-events: auto;
 }
 
-.toolbar__panel-btn-group {
+/* ─── Minimized panel tiles (in toolbar) ─────────────────────────────────── */
+
+.panel-tile {
+  position: relative;
   display: flex;
   align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: #2d2d4e;
+  border: 1px solid #4a4a7a;
+  border-radius: 6px;
+  cursor: pointer;
   flex-shrink: 0;
   /* eslint-disable-next-line css/no-invalid-properties */
   -webkit-app-region: no-drag;
-}
-
-.toolbar__panel-toggle {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  height: 30px;
-  padding: 0 10px;
-  background: #2d2d4e;
-  border: 1px solid #4a4a7a;
-  border-radius: 6px 0 0 6px;
-  color: #c4b5fd;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
+  pointer-events: auto;
   transition:
     background 0.15s,
     border-color 0.15s;
-  /* eslint-disable-next-line css/no-invalid-properties */
-  -webkit-app-region: no-drag;
-  max-width: 160px;
 }
 
-.toolbar__panel-toggle:hover {
+.panel-tile:hover {
   background: #3d3d6e;
   border-color: #7c3aed;
 }
 
-.toolbar__panel-toggle--open {
-  background: #4c1d95;
-  border-color: #7c3aed;
-  color: #ede9fe;
+.panel-tile__favicon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
 }
 
-.toolbar__panel-toggle--open:hover {
-  background: #5b21b6;
-}
-
-.toolbar__panel-toggle-icon {
-  font-size: 13px;
-  line-height: 1;
-  flex-shrink: 0;
-}
-
-.toolbar__panel-toggle-label {
-  font-size: 12px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.toolbar__panel-remove {
-  height: 30px;
-  width: 22px;
-  padding: 0;
-  background: #2d2d4e;
-  border: 1px solid #4a4a7a;
-  border-left: none;
-  border-radius: 0 6px 6px 0;
-  color: #888;
+.panel-tile__favicon-fallback {
   font-size: 14px;
   line-height: 1;
-  cursor: pointer;
-  /* eslint-disable-next-line css/no-invalid-properties */
-  -webkit-app-region: no-drag;
-  transition:
-    background 0.15s,
-    color 0.15s;
 }
 
-.toolbar__panel-remove:hover {
+.panel-tile__remove {
+  display: none;
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
   background: #5b1d1d;
-  border-color: #ef4444;
+  border: 1px solid #ef4444;
   color: #fca5a5;
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  pointer-events: auto;
+  /* eslint-disable-next-line css/no-invalid-properties */
+  -webkit-app-region: no-drag;
 }
+
+.panel-tile:hover .panel-tile__remove {
+  display: flex;
+}
+
+/* ─── Add panel button ───────────────────────────────────────────────────── */
 
 .toolbar__add-panel {
   flex-shrink: 0;
@@ -137,6 +126,7 @@ body {
   cursor: pointer;
   /* eslint-disable-next-line css/no-invalid-properties */
   -webkit-app-region: no-drag;
+  pointer-events: auto;
   transition:
     background 0.15s,
     border-color 0.15s;
@@ -148,6 +138,8 @@ body {
   color: #ede9fe;
 }
 
+/* ─── URL bar ────────────────────────────────────────────────────────────── */
+
 .toolbar__active-url {
   display: flex;
   align-items: center;
@@ -155,6 +147,7 @@ body {
   flex-shrink: 0;
   /* eslint-disable-next-line css/no-invalid-properties */
   -webkit-app-region: no-drag;
+  pointer-events: auto;
 }
 
 .toolbar__spacer {
@@ -171,6 +164,7 @@ body {
   justify-content: flex-end;
   /* eslint-disable-next-line css/no-invalid-properties */
   -webkit-app-region: no-drag;
+  pointer-events: auto;
 }
 
 .toolbar__panel-label {
@@ -195,6 +189,7 @@ body {
   outline: none;
   /* eslint-disable-next-line css/no-invalid-properties */
   -webkit-app-region: no-drag;
+  pointer-events: auto;
 }
 
 .toolbar__url-input:focus {
@@ -214,6 +209,7 @@ body {
   cursor: pointer;
   /* eslint-disable-next-line css/no-invalid-properties */
   -webkit-app-region: no-drag;
+  pointer-events: auto;
   transition: background 0.15s;
 }
 
@@ -225,6 +221,8 @@ body {
   background: #5b21b6;
 }
 
+/* ─── Beyond20 status ────────────────────────────────────────────────────── */
+
 .toolbar__b20 {
   display: flex;
   align-items: center;
@@ -234,6 +232,7 @@ body {
   /* eslint-disable-next-line css/no-invalid-properties */
   -webkit-app-region: no-drag;
   cursor: default;
+  pointer-events: auto;
 }
 
 .toolbar__b20-dot {
@@ -279,6 +278,8 @@ body {
   white-space: nowrap;
 }
 
+/* ─── Window controls ────────────────────────────────────────────────────── */
+
 .wc-mac {
   display: flex;
   align-items: center;
@@ -287,6 +288,7 @@ body {
   padding: 0 8px 0 16px;
   /* eslint-disable-next-line css/no-invalid-properties */
   -webkit-app-region: no-drag;
+  pointer-events: auto;
 }
 
 .wc-mac__btn {
@@ -343,6 +345,7 @@ body {
   height: 100%;
   /* eslint-disable-next-line css/no-invalid-properties */
   -webkit-app-region: no-drag;
+  pointer-events: auto;
 }
 
 .wc-win__btn {
@@ -359,6 +362,7 @@ body {
   transition:
     background 0.1s,
     color 0.1s;
+  pointer-events: auto;
 }
 
 .wc-win__btn:hover {
@@ -374,4 +378,153 @@ body {
 .toolbar[data-platform="win32"],
 .toolbar[data-platform="linux"] {
   padding-right: 0;
+}
+
+/* ─── Panel overlay (full-window transparent container) ─────────────────── */
+
+.panel-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* During drag/resize, capture all mouse events to prevent loss over WebContentsViews */
+.panel-overlay--capturing {
+  pointer-events: all;
+}
+
+/* ─── Floating panel chrome ──────────────────────────────────────────────── */
+
+.floating-panel {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+}
+
+.floating-panel__titlebar {
+  height: 32px;
+  background: #1a1a2e;
+  border: 1px solid #2d2d4e;
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  cursor: grab;
+  pointer-events: auto;
+  /* eslint-disable-next-line css/use-baseline */
+  user-select: none;
+  -webkit-user-select: none;
+  /* eslint-disable-next-line css/no-invalid-properties */
+  -webkit-app-region: no-drag;
+  flex-shrink: 0;
+}
+
+.floating-panel__titlebar:active {
+  cursor: grabbing;
+}
+
+.floating-panel__favicon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.floating-panel__favicon-fallback {
+  font-size: 13px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.floating-panel__title {
+  font-size: 12px;
+  color: #c4b5fd;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.floating-panel__btn {
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #888;
+  cursor: pointer;
+  pointer-events: auto;
+  font-size: 14px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  flex-shrink: 0;
+  transition:
+    background 0.1s,
+    color 0.1s;
+}
+
+.floating-panel__btn:hover {
+  background: #2d2d4e;
+  color: #e0e0e0;
+}
+
+.floating-panel__btn--close:hover {
+  background: #5b1d1d;
+  color: #fca5a5;
+}
+
+/* Content area — the WebContentsView sits behind this in the overlay window.
+   A near-zero alpha background ensures higher-z panel chrome occludes lower-z
+   panel borders rather than letting them bleed through transparent areas. */
+.floating-panel__content {
+  flex: 1;
+  border: 1px solid #2d2d4e;
+  border-top: none;
+  border-radius: 0 0 2px 2px;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.01);
+}
+
+/* Resize handles — thin invisible hit areas on edges and corner */
+.floating-panel__resize {
+  position: absolute;
+  pointer-events: auto;
+}
+
+.floating-panel__resize--e {
+  top: 32px;
+  right: -4px;
+  width: 8px;
+  bottom: 0;
+  cursor: ew-resize;
+}
+
+.floating-panel__resize--s {
+  bottom: -4px;
+  left: 0;
+  right: 0;
+  height: 8px;
+  cursor: ns-resize;
+}
+
+.floating-panel__resize--se {
+  bottom: -4px;
+  right: -4px;
+  width: 16px;
+  height: 16px;
+  cursor: se-resize;
 }

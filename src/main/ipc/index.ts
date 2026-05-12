@@ -1,9 +1,10 @@
 import { registerHandlers } from "./registry";
-import { createHandlers, registerResizeHandlers } from "./handlers";
+import { createHandlers } from "./handlers";
+import { registerRoll20BridgeHandlers } from "./roll20Bridge";
 
 export { pushEvent } from "./emitter";
 
 export function registerIpcHandlers(): void {
   registerHandlers(createHandlers());
-  registerResizeHandlers();
+  registerRoll20BridgeHandlers();
 }

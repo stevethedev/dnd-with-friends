@@ -28,7 +28,8 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: resolve(__dirname, "src/preload/index.ts"),
-          "resize-handle": resolve(__dirname, "src/preload/resize-handle.ts"),
+          roll20: resolve(__dirname, "src/preload/roll20.ts"),
+          "roll20-popout": resolve(__dirname, "src/preload/roll20-popout.ts"),
         },
       },
     },
@@ -40,10 +41,7 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: resolve(__dirname, "src/renderer/index.html"),
-          "resize-handle": resolve(
-            __dirname,
-            "src/renderer/resize-handle.html",
-          ),
+          overlay: resolve(__dirname, "src/renderer/overlay.html"),
         },
       },
     },

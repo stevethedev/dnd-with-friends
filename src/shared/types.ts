@@ -17,11 +17,17 @@ export type Beyond20Status =
 /** All possible Beyond20 load-state strings, derived from the discriminated union. */
 export type Beyond20LoadStatus = Beyond20Status["status"];
 
+/** Whether a panel is floating (visible) or minimized to a toolbar tile. */
+export type PanelDisplayState = "open" | "minimized";
+
 /** Persisted panel configuration saved to the store. */
 export interface PanelConfig {
   id: string;
   url: string;
   width: number;
+  height: number;
+  x: number;
+  y: number;
 }
 
 /**
@@ -32,9 +38,16 @@ export interface PanelInfo {
   id: string;
   title: string;
   url: string;
-  /** Derived at query time: true when this panel is the current activePanelId. */
-  isOpen: boolean;
+  /** Whether the panel is floating open or collapsed to a toolbar favicon tile. */
+  state: PanelDisplayState;
   width: number;
+  height: number;
+  x: number;
+  y: number;
+  /** Stacking order — higher values appear in front. */
+  zIndex: number;
+  /** Base64 data URL of the site's favicon, or null if not yet captured. */
+  favicon: string | null;
 }
 
 export interface StoreSchema {
