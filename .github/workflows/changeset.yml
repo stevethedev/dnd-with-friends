@@ -22,7 +22,7 @@ jobs:
           client-id: ${{ secrets.RELEASEBOT_CLIENT_ID }}
           private-key: ${{ secrets.RELEASEBOT_PRIVATE_KEY }}
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           # Full history so changeset can read the log for changelog entries
           fetch-depth: 0
